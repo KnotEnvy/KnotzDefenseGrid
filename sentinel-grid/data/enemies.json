@@ -1,0 +1,29 @@
+{
+    "grunt": {
+      "name": "Grunt",
+      "asset": "shape_rect_red",
+      "color": [255, 0, 0],
+      "size": [20, 20],
+      "health": 50,
+      "speed": 75,
+      "reward": 25
+    },
+    "tank": {
+      "name": "Tank",
+      "asset": "shape_rect_darkred",
+      "color": [139, 0, 0],
+      "size": [30, 30],
+      "health": 150,
+      "speed": 50,
+      "reward": 50
+    },
+    "runner": { 
+      "name": "Runner",
+      "asset": "shape_rect_pink",
+      "color": [255, 105, 180], 
+      "size": [15, 15],
+      "health": 30,
+      "speed": 120, 
+      "reward": 15
+    }
+  }

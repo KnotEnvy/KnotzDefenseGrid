@@ -1,0 +1,66 @@
+{
+    "gun_tower": {
+      "name": "Gun Tower",
+      "asset": "shape_cylinder_grey",
+      "color": [160, 160, 160],
+      "size": [30, 40],
+      "cost": 100,
+      "range": 150,
+      "fire_rate": 1.0,
+      "damage": 12,
+      "projectile_type": "bullet",
+      "projectile_speed": 500,
+      "projectile_color": [255, 255, 0],
+      "projectile_size": [5, 5],
+      "upgrades_to": "gun_tower_mk2", 
+      "upgrade_cost": 75           
+    },
+    "gun_tower_mk2": { 
+    "name": "Gun Tower Mk2",
+    "asset": "shape_cylinder_grey_mk2",
+    "color": [200, 200, 200], 
+    "cost": 0, 
+    "range": 180, 
+    "fire_rate": 1.5, 
+    "damage": 18, 
+    "projectile_type": "bullet_mk2", 
+    "projectile_speed": 650,
+    "projectile_color": [255, 255, 100], 
+    "projectile_size": [6, 6],
+    "upgrades_to": null, 
+    "upgrade_cost": 0
+  },
+    "cannon_tower": {
+      "name": "Cannon Tower",
+      "asset": "shape_cylinder_darkgrey",
+      "color": [80, 80, 80],
+      "size": [40, 50],
+      "cost": 250,
+      "range": 200,
+      "fire_rate": 0.4,
+      "damage": 50,
+      "projectile_type": "shell",
+      "projectile_speed": 300,
+      "projectile_color": [255, 165, 0],
+      "projectile_size": [10, 10],
+      "upgrades_to": null, 
+      "upgrade_cost": 0
+      
+    },
+    "slow_tower": { 
+      "name": "Slow Tower",
+      "asset": "shape_cylinder_blue",
+      "color": [0, 100, 255], 
+      "size": [35, 35],
+      "cost": 120,
+      "range": 130,
+      "fire_rate": 0.5,          
+      "effect_type": "slow",
+      "slow_factor": 0.6,        
+      "slow_duration": 2.0,
+      "upgrades_to": null, 
+      "upgrade_cost": 0
+         
+    }
+    
+  }

@@ -1,0 +1,18 @@
+{
+  "wave1_l1": [
+    { "time": 1.0, "enemy_type": "grunt", "count": 5, "interval": 0.8 }
+  ],
+  "wave2_l1": [
+    { "time": 1.0, "enemy_type": "grunt", "count": 8, "interval": 0.6 },
+    { "time": 8.0, "enemy_type": "tank", "count": 2, "interval": 1.5 }
+  ],
+  "wave1_l2": [ 
+    { "time": 1.0, "enemy_type": "grunt", "count": 10, "interval": 0.7 },
+    { "time": 5.0, "enemy_type": "runner", "count": 4, "interval": 0.5 }
+  ],
+  "wave2_l2": [ 
+    { "time": 1.0, "enemy_type": "runner", "count": 8, "interval": 0.6 },
+    { "time": 6.0, "enemy_type": "grunt", "count": 6, "interval": 0.8 },
+    { "time": 12.0, "enemy_type": "tank", "count": 3, "interval": 1.2 }
+  ]
+}
