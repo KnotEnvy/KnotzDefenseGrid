@@ -1,9 +1,7 @@
 # src/towers.py
 import pygame
 import math
-# Import Projectile if type hinting or direct instantiation was needed,
-# but it's mainly handled via the pool passed in __init__.
-# from .projectiles import Projectile
+from .config import get_color # Use palette helper
 
 class Tower(pygame.sprite.Sprite):
     """Base class for all towers."""
@@ -15,35 +13,42 @@ class Tower(pygame.sprite.Sprite):
         self.data = tower_data # Store the raw data dict from JSON
         self.name = tower_data.get('name', 'Unknown Tower')
         self.range = tower_data.get('range', 100)
-        self.fire_rate = tower_data.get('fire_rate', 1.0) # Pulses/shots per second
+        self.fire_rate = tower_data.get('fire_rate', 1.0)
         self.cost = tower_data.get('cost', 100)
-        self.color = tower_data.get('color', (100, 100, 100))
-        self.size = tower_data.get('size', (30, 30))
+        self.size = tower_data.get('size', (30, 30)) # Keep size for rect/range draw
+
+        # Store shape info from data
+        self.shape_type = tower_data.get("shape_type", "rect")
+        self.shape_points = tower_data.get("shape_points", [])
+        self.fill_color_idx = tower_data.get("fill_color_idx", 10) # Default Grey index
+        self.border_color_idx = tower_data.get("border_color_idx", 1) # Default White index
+        self.border_width = tower_data.get("border_width", 1)
 
         self.pos = pygame.Vector2(pos)
-        # References to external systems needed for operation
         self.projectile_pool = projectile_pool
         self.projectile_group = projectile_group
 
-        # Visuals
-        self.image = pygame.Surface(self.size).convert_alpha()
-        self.image.fill(self.color)
-        # Simple visual distinction (e.g., inner darker rect)
-        try: # Handle potential division by zero if color component is 0
-            darker_color = tuple(max(0, c - 50) for c in self.color) # Make it slightly darker
-            inner_rect = pygame.Rect(5, 5, max(1, self.size[0]-10), max(1, self.size[1]-10))
-            pygame.draw.rect(self.image, darker_color , inner_rect)
-        except Exception as e:
-             print(f"Warning: Could not draw inner rect for tower {self.name}. Error: {e}")
-
-        self.rect = self.image.get_rect(center=self.pos)
+        # --- Remove old image creation ---
+        # self.image = pygame.Surface(self.size).convert_alpha()
+        # self.image.fill(self.color)
+        # try:
+        #     darker_color = tuple(max(0, c - 50) for c in self.color)
+        #     inner_rect = pygame.Rect(5, 5, max(1, self.size[0]-10), max(1, self.size[1]-10))
+        #     pygame.draw.rect(self.image, darker_color , inner_rect)
+        # except Exception as e:
+        #      print(f"Warning: Could not draw inner rect for tower {self.name}. Error: {e}")
+        # self.rect = self.image.get_rect(center=self.pos)
+        # --- Create rect based on size ---
+        self.rect = pygame.Rect(0, 0, self.size[0], self.size[1])
+        self.rect.center = self.pos
 
         # State variables
-        self.target = None # Current single enemy target (for projectile towers)
-        self.last_shot_time = 0.0 # Time since last shot/pulse
+        self.target = None
+        self.last_shot_time = 0.0
         self.cooldown = 1.0 / self.fire_rate if self.fire_rate > 0 else float('inf')
-        self.is_selected = False # For showing range/upgrade UI
+        self.is_selected = False
 
+    # find_targets_in_range, find_target remain the same
     def find_targets_in_range(self, enemies_group):
         """Finds all active enemies within the tower's range."""
         targets = []
@@ -69,109 +74,118 @@ class Tower(pygame.sprite.Sprite):
 
          self.target = closest_enemy # Update the tower's target
 
-
     def update(self, dt, enemies_group):
-        """
-        Base update method, primarily for single-target projectile towers.
-        Subclasses for effect towers (like SlowTower) should override this.
-        """
-        # 1. Find a target
+        """Base update method for projectile towers."""
         self.find_target(enemies_group)
-
-        # 2. Handle Firing Cooldown and Attempt Firing
         self.last_shot_time += dt
         if self.last_shot_time >= self.cooldown:
-             if self.target and self.target.is_active: # Check if target exists and is still active
-                  if self.fire(): # Attempt to fire
-                       self.last_shot_time = 0.0 # Reset cooldown ONLY if fire was successful
-
-
-        # Inside class Tower(pygame.sprite.Sprite):
+             if self.target and self.target.is_active:
+                  if self.fire():
+                       self.last_shot_time = 0.0
 
     def fire(self):
-        """
-        Default fire method: Creates and launches a projectile towards the target.
-        Returns True if firing was successful, False otherwise.
-        """
-        # 1. Check for a valid, active target
+        """Default fire method: Creates and launches a projectile."""
         if not self.target or not self.target.is_active:
             return False
-
-        # 2. Debug print (optional now, but keep if desired)
-        # print(f"  DEBUG Tower.fire for {self.name}:")
-        # print(f"    Checking projectile_pool: {type(self.projectile_pool)} (Is None: {self.projectile_pool is None})")
-        # print(f"    Checking projectile_group: {type(self.projectile_group)} (Is None: {self.projectile_group is None})")
-
-        # 3. **Crucial Check:** Explicitly check if objects are None.
         if self.projectile_pool is None or self.projectile_group is None:
              print(f"Critical Error: {self.name} FAILED 'is None' check for pool/group!")
              return False
 
-        # 4. Get projectile from pool
+        # Pass the tower's full data dict, which now includes projectile shape info
         projectile = self.projectile_pool.get(self.data, self.rect.center, self.target.rect.center)
 
-        # 5. Add to group if successfully retrieved
         if projectile:
             self.projectile_group.add(projectile)
             return True
         else:
-             print(f"Error: {self.name} failed to get projectile from pool.")
+             # print(f"Error: {self.name} failed to get projectile from pool.") # Quieter
              return False
+
+    def draw_shape(self, surface):
+        """Draws the tower's shape using pygame.draw."""
+        fill_color = get_color(self.fill_color_idx)
+        border_color = get_color(self.border_color_idx)
+        center_x, center_y = self.rect.centerx, self.rect.centery
+
+        if self.shape_type == "rect":
+            pygame.draw.rect(surface, fill_color, self.rect)
+            if self.border_width > 0:
+                pygame.draw.rect(surface, border_color, self.rect, self.border_width)
+        elif self.shape_type == "circle":
+             radius = self.size[0] // 2
+             pygame.draw.circle(surface, fill_color, self.rect.center, radius)
+             if self.border_width > 0:
+                 pygame.draw.circle(surface, border_color, self.rect.center, radius, self.border_width)
+        elif self.shape_type == "polygon":
+            abs_points = [(center_x + p[0], center_y + p[1]) for p in self.shape_points]
+            if len(abs_points) > 2:
+                pygame.draw.polygon(surface, fill_color, abs_points)
+                if self.border_width > 0:
+                    pygame.draw.polygon(surface, border_color, abs_points, self.border_width)
+            else: # Fallback
+                pygame.draw.rect(surface, fill_color, self.rect)
+                if self.border_width > 0:
+                    pygame.draw.rect(surface, border_color, self.rect, self.border_width)
+
+        # Optionally draw something simple on top, like the old inner rect
+        # Example: Draw a small inner circle
+        inner_radius = max(1, self.size[0] // 4)
+        inner_color = get_color(self.border_color_idx) # Use border color for contrast
+        pygame.draw.circle(surface, inner_color, self.rect.center, inner_radius)
 
 
     def draw_range(self, surface):
         """Draws the tower's range indicator, brighter if selected."""
-        # Use alpha transparency for the circle color
-        color = (255, 255, 255, 150) if self.is_selected else (255, 255, 255, 70)
-        # Draw the circle directly onto the main surface
-        pygame.draw.circle(surface, color, self.rect.center, self.range, 1) # width=1 for outline
+        # Use palette index 1 (White/Accent) for range circle
+        range_color_base = get_color(1, (255, 255, 255))
+        alpha = 150 if self.is_selected else 70
+        # Create RGBA tuple
+        range_color = (range_color_base[0], range_color_base[1], range_color_base[2], alpha)
+        pygame.draw.circle(surface, range_color, self.rect.center, self.range, 1)
 
 
 # --- Specific Tower Type Subclasses ---
 
 class GunTower(Tower):
-    """A standard single-target projectile tower."""
-    # No need to override __init__, update, or fire unless adding unique behavior.
-    # Inherits the base class logic which works for this type.
-    pass
+    pass # Inherits draw_shape
 
 class CannonTower(Tower):
-    """A slower, higher-damage projectile tower (potentially AoE later)."""
-    # Inherits base update/fire for now.
-    # If adding AoE, the projectile's handle_hit or a collision callback
-    # would need to find enemies near the impact point.
-    pass
+    pass # Inherits draw_shape
 
 class SlowTower(Tower):
     """Applies a slowing effect to enemies within range periodically."""
     def __init__(self, tower_id, tower_data, pos, projectile_pool, projectile_group):
         super().__init__(tower_id, tower_data, pos, projectile_pool, projectile_group)
-        # Store effect-specific parameters
         self.slow_factor = tower_data.get('slow_factor', 0.5)
         self.slow_duration = tower_data.get('slow_duration', 2.0)
-        # Use fire_rate from JSON as the pulse rate
         self.pulse_cooldown = 1.0 / self.fire_rate if self.fire_rate > 0 else float('inf')
-        self.last_pulse_time = 0.0 # Use last_shot_time from base class as the pulse timer
-
+        # No need for last_pulse_time, base class's last_shot_time works fine
 
     def update(self, dt, enemies_group):
-        """
-        Overrides the base update. Applies slow effect periodically to all enemies in range.
-        """
-        self.last_shot_time += dt # Use base class timer for pulsing
+        """Overrides base update for pulsing effect."""
+        self.last_shot_time += dt # Use base class timer
         if self.last_shot_time >= self.pulse_cooldown:
             self.last_shot_time = 0.0 # Reset pulse timer
 
             targets_in_range = self.find_targets_in_range(enemies_group)
             if targets_in_range:
-                 # print(f"{self.name}: Pulsing slow effect on {len(targets_in_range)} targets.") # Debug
-                 # Trigger SFX/VFX pulse effect here later
+                 # Add visual pulse effect trigger here later (Phase 9)
                  for enemy in targets_in_range:
-                     if enemy.is_active: # Double-check target is active
+                     if enemy.is_active:
                          enemy.apply_slow(self.slow_factor, self.slow_duration)
 
-            # Does not need to find or store a single self.target
-
-    # Override fire() method as this tower doesn't shoot projectiles
     def fire(self):
-         return False
+         return False # Slow tower doesn't fire projectiles
+
+    def draw_shape(self, surface):
+        """Optionally override or add to base draw for slow tower."""
+        super().draw_shape(surface) # Draw the base shape first
+        # Add a pulsing visual element later? For now, base draw is enough.
+        # Example: Draw a slightly smaller inner polygon that pulses?
+        # pulse_scale = 0.5 + (math.sin(pygame.time.get_ticks() * 0.005) + 1) * 0.2 # Slow pulse scale
+        # inner_color = get_color(4) # Use blue?
+        # center_x, center_y = self.rect.centerx, self.rect.centery
+        # if self.shape_type == "polygon":
+        #     inner_points = [(center_x + p[0] * pulse_scale, center_y + p[1] * pulse_scale) for p in self.shape_points]
+        #     if len(inner_points) > 2:
+        #         pygame.draw.polygon(surface, inner_color, inner_points)

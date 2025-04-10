@@ -67,10 +67,10 @@ def get_color(index, default_color=(255, 0, 255)): # Default to bright pink for 
 # BLACK = (0, 0, 0)
 # WHITE = (255, 255, 255)
 # GREY = (128, 128, 128)
-# GREEN = (0, 255, 0)
+GREEN = (0, 255, 0)
 # BLUE = (0, 0, 255)
 # DARK_BLUE = (0, 0, 100) # New color
-# RED = (255, 0, 0)
+RED = (255, 0, 0)
 # YELLOW = (255, 255, 0)
 
 # Game States (Keep as is)

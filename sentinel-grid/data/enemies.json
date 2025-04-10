@@ -1,29 +1,35 @@
 {
     "grunt": {
       "name": "Grunt",
-      "asset": "shape_rect_red",
-      "color": [255, 0, 0],
-      "size": [20, 20],
+      "shape_type": "polygon",
+      "shape_points": [[-10, -10], [10, -10], [10, 10], [-10, 10]], "size": [20, 20], "comment": "Simple square",
+      "fill_color_idx": 6,
+      "border_color_idx": 1,
+      "border_width": 1,
       "health": 50,
       "speed": 75,
       "reward": 25
     },
     "tank": {
       "name": "Tank",
-      "asset": "shape_rect_darkred",
-      "color": [139, 0, 0],
-      "size": [30, 30],
+      "shape_type": "polygon",
+      "shape_points": [[-15, -12], [15, -12], [12, 12], [-12, 12]], "size": [30, 24], "comment": "Trapezoid",
+      "fill_color_idx": 8,
+      "border_color_idx": 1,
+      "border_width": 2,
       "health": 150,
       "speed": 50,
       "reward": 50
     },
-    "runner": { 
+    "runner": {
       "name": "Runner",
-      "asset": "shape_rect_pink",
-      "color": [255, 105, 180], 
-      "size": [15, 15],
+      "shape_type": "polygon",
+      "shape_points": [[0, -9], [7, 7], [-7, 7]], "size": [14, 18], "comment": "Triangle",
+      "fill_color_idx": 9,
+      "border_color_idx": 1,
+      "border_width": 1,
       "health": 30,
-      "speed": 120, 
+      "speed": 120,
       "reward": 15
     }
   }

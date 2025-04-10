@@ -1,17 +1,17 @@
 {
     "level1": {
       "name": "Test Zone Alpha",
-      "map_background": "color_black",
-      "path_waypoints_key": "level1_path", 
-      "platform_locations_key": "level1_platforms", 
+      "map_background_idx": 0, "comment": "Use palette index for background",
+      "path_waypoints_key": "level1_path",
+      "platform_locations_key": "level1_platforms",
       "starting_resources": 300,
       "core_location": [1180, 360],
       "core_health": 5,
       "wave_sequence": ["wave1_l1", "wave2_l1"]
     },
-    "level2": { 
+    "level2": {
       "name": "Crossroads",
-      "map_background": "color_dark_blue", 
+      "map_background_idx": 5, "comment": "Use palette index for background",
       "path_waypoints_key": "level2_path",
       "platform_locations_key": "level2_platforms",
       "starting_resources": 400,
