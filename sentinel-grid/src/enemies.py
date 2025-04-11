@@ -4,6 +4,10 @@ import math
 # Use get_color from config
 from .config import get_color, RED, GREEN # Keep old colors for health bar for now
 
+# --- Add animation constant ---
+ENEMY_BOB_SPEED = 8.0 # Radians per second
+ENEMY_BOB_AMOUNT = 2  # Pixels up/down
+
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, enemy_data, path):
         """Initializes an enemy sprite."""
@@ -18,6 +22,7 @@ class Enemy(pygame.sprite.Sprite):
         # Instead, create rect based on size data for collision
         self._size = self.enemy_data.get('size', (20, 20))
         self.rect = pygame.Rect(0, 0, self._size[0], self._size[1])
+        self.anim_timer = pygame.time.get_ticks() / 1000.0
         if self.path:
             self.rect.center = self.pos
         else:
@@ -60,6 +65,7 @@ class Enemy(pygame.sprite.Sprite):
              self.rect = pygame.Rect(0, 0, self._size[0], self._size[1])
              self.rect.center = self.pos
 
+         self.anim_timer = pygame.time.get_ticks() / 1000.0 # Reset timer on setup
          self.is_active = True
          self.reached_end = False
 
@@ -78,6 +84,9 @@ class Enemy(pygame.sprite.Sprite):
     def update(self, dt):
         """Updates enemy position, state, and effects."""
         if not self.is_active: return
+
+        # --- Update animation timer ---
+        self.anim_timer += dt # Update based on dt
 
         if self.slow_timer > 0:
             self.slow_timer -= dt
@@ -134,33 +143,45 @@ class Enemy(pygame.sprite.Sprite):
 
         fill_color = get_color(self.fill_color_idx)
         border_color = get_color(self.border_color_idx)
-        center_x, center_y = int(self.pos.x), int(self.pos.y)
 
+        # --- Calculate Bobbing Offset ---
+        # Use the anim_timer which increments based on dt
+        bob_offset = math.sin(self.anim_timer * ENEMY_BOB_SPEED) * ENEMY_BOB_AMOUNT
+        # Apply offset to the base position for drawing
+        draw_center_x = int(self.pos.x)
+        draw_center_y = int(self.pos.y + bob_offset) # Add bob to Y
+
+        # --- Draw shape at the offset position ---
         if self.shape_type == "rect":
-            # Adjust rect position before drawing if using rect shape directly
             shape_rect = pygame.Rect(0, 0, self._size[0], self._size[1])
-            shape_rect.center = self.rect.center
+            shape_rect.center = (draw_center_x, draw_center_y) # Use draw position
             pygame.draw.rect(surface, fill_color, shape_rect)
             if self.border_width > 0:
                 pygame.draw.rect(surface, border_color, shape_rect, self.border_width)
         elif self.shape_type == "circle":
-             radius = self._size[0] // 2 # Approximate from size
-             pygame.draw.circle(surface, fill_color, self.rect.center, radius)
+             radius = self._size[0] // 2
+             draw_center = (draw_center_x, draw_center_y) # Use draw position
+             pygame.draw.circle(surface, fill_color, draw_center, radius)
              if self.border_width > 0:
-                 pygame.draw.circle(surface, border_color, self.rect.center, radius, self.border_width)
+                 pygame.draw.circle(surface, border_color, draw_center, radius, self.border_width)
         elif self.shape_type == "polygon":
-            # Translate relative points to absolute screen coordinates
-            abs_points = [(center_x + p[0], center_y + p[1]) for p in self.shape_points]
-            if len(abs_points) > 2: # Need at least 3 points for polygon
+            # Translate relative points to absolute *draw* coordinates
+            abs_points = [(draw_center_x + p[0], draw_center_y + p[1]) for p in self.shape_points]
+            if len(abs_points) > 2:
                 pygame.draw.polygon(surface, fill_color, abs_points)
                 if self.border_width > 0:
                     pygame.draw.polygon(surface, border_color, abs_points, self.border_width)
-            else: # Fallback if polygon points are bad
-                 pygame.draw.rect(surface, fill_color, self.rect) # Draw fallback rect
+            else: # Fallback
+                 # Use a rect centered at the draw position for fallback
+                 fallback_rect = pygame.Rect(0,0, self._size[0], self._size[1])
+                 fallback_rect.center = (draw_center_x, draw_center_y)
+                 pygame.draw.rect(surface, fill_color, fallback_rect)
                  if self.border_width > 0:
-                      pygame.draw.rect(surface, border_color, self.rect, self.border_width)
+                      pygame.draw.rect(surface, border_color, fallback_rect, self.border_width)
 
-        # Health bar and slow indicator draw calls remain the same for now
+        # --- Health bar / Slow indicator positioning ---
+        # Base these off the *logical* rect position, not the bobbing one,
+        # otherwise they'll bob too, which might look weird.
         self.draw_health_bar(surface)
         self.draw_slow_indicator(surface)
 

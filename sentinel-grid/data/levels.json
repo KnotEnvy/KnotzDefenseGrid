@@ -4,7 +4,7 @@
       "map_background_idx": 0, "comment": "Use palette index for background",
       "path_waypoints_key": "level1_path",
       "platform_locations_key": "level1_platforms",
-      "starting_resources": 300,
+      "starting_resources": 400,
       "core_location": [1180, 360],
       "core_health": 5,
       "wave_sequence": ["wave1_l1", "wave2_l1"]
