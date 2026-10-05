@@ -59,28 +59,30 @@ function bestSpot(sim, type, cells, rng) {
   return null;
 }
 
-export function playLevel(index, { seed = 7, verbose = false, maxTime = 3600, lazy = 0, hpScale = 1 } = {}) {
-  const sim = new Sim(LEVELS[index], { seed, hpScale });
-  let rs = seed;
-  const rng = () => ((rs = (rs * 1664525 + 1013904223) >>> 0) / 4294967296);
-  const wavesCleared = [];
-  sim.on('waveClear', e => wavesCleared.push(e.index));
-  let nextDecision = 0;
-  let cache = null;
-  let cacheFor = -1;
+/** A heuristic player. Works on any Sim instance (Node or the live in-browser scene). */
+export class Bot {
+  constructor(sim, { seed = 7, lazy = 0 } = {}) {
+    this.sim = sim;
+    this.lazy = lazy;
+    this.rs = seed;
+    this.rng = () => ((this.rs = (this.rs * 1664525 + 1013904223) >>> 0) / 4294967296);
+    this.nextDecision = 0;
+    this.cache = null;
+    this.cacheFor = -1;
+  }
 
-  while (sim.state === 'play' && sim.time < maxTime) {
-    sim.update(FIXED_DT);
-    if (sim.time < nextDecision) continue;
-    nextDecision = sim.time + 0.4;
-    if (sim.silver < 55) continue;
+  /** Call once per sim tick (cheap until a decision is due). */
+  tick() {
+    const sim = this.sim;
+    if (sim.time < this.nextDecision) return;
+    this.nextDecision = sim.time + 0.4;
     // Call waves early only when comfortably ahead and the field is empty.
     if (sim.canCallWave && sim.enemies.length === 0 && sim.posts.length >= 4 && sim.nextWaveIn > 5) sim.callWave();
+    if (sim.silver < 55) return;
 
-    // Compute best action by value/cost.
-    if (cacheFor !== sim.posts.length) {
-      cache = routeCells(sim);
-      cacheFor = sim.posts.length;
+    if (this.cacheFor !== sim.posts.length) {
+      this.cache = routeCells(sim);
+      this.cacheFor = sim.posts.length;
     }
     const counts = {};
     for (const p of sim.posts) counts[p.type] = (counts[p.type] ?? 0) + 1;
@@ -89,9 +91,8 @@ export function playLevel(index, { seed = 7, verbose = false, maxTime = 3600, la
     for (const type of sim.unlocked) {
       const base = VALUE[type];
       if (!base) continue;
-      const def = POSTS[type];
-      const cost = def.levels[0].cost;
-      const spot = bestSpot(sim, type, cache, rng);
+      const cost = POSTS[type].levels[0].cost;
+      const spot = bestSpot(sim, type, this.cache, this.rng);
       if (!spot) continue;
       const v = (base * (0.3 + spot.score / 25)) / (1 + 0.28 * (counts[type] ?? 0)) / cost;
       if (!best || v > best.v) best = { v, kind: 'build', type, spot, cost };
@@ -99,21 +100,29 @@ export function playLevel(index, { seed = 7, verbose = false, maxTime = 3600, la
     for (const p of sim.posts) {
       const cost = sim.upgradeCost(p);
       if (cost == null) continue;
-      const v = ((VALUE[p.type] || 0.3) * (0.7 + p.kills / 40) * (1 + p.level * 0.1)) / cost * 1.15;
+      const v = (((VALUE[p.type] || 0.3) * (0.7 + p.kills / 40) * (1 + p.level * 0.1)) / cost) * 1.15;
       if (!best || v > best.v) best = { v, kind: 'up', post: p, cost };
     }
     // Fire posts only once there are several posts to buff.
     if (sim.unlocked.has('fire') && !counts.fire && sim.posts.length >= 5) {
-      const spot = bestSpot(sim, 'fire', cache, rng);
-      if (spot) {
-        const v = 0.02;
-        if (!best || v > best.v) best = { v, kind: 'build', type: 'fire', spot, cost: POSTS.fire.levels[0].cost };
-      }
+      const spot = bestSpot(sim, 'fire', this.cache, this.rng);
+      if (spot && (!best || 0.02 > best.v)) best = { v: 0.02, kind: 'build', type: 'fire', spot, cost: POSTS.fire.levels[0].cost };
     }
-    if (best && sim.silver >= best.cost && rng() >= lazy) {
+    if (best && sim.silver >= best.cost && this.rng() >= this.lazy) {
       if (best.kind === 'build') sim.build(best.type, best.spot.cx, best.spot.cy);
       else sim.upgrade(best.post);
     }
+  }
+}
+
+export function playLevel(index, { seed = 7, verbose = false, maxTime = 3600, lazy = 0, hpScale = 1 } = {}) {
+  const sim = new Sim(LEVELS[index], { seed, hpScale });
+  const bot = new Bot(sim, { seed, lazy });
+  const wavesCleared = [];
+  sim.on('waveClear', e => wavesCleared.push(e.index));
+  while (sim.state === 'play' && sim.time < maxTime) {
+    sim.update(FIXED_DT);
+    bot.tick();
   }
 
   const res = {
@@ -133,7 +142,7 @@ export function playLevel(index, { seed = 7, verbose = false, maxTime = 3600, la
   return res;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (typeof process !== "undefined" && import.meta.url === `file://${process.argv[1]}`) {
   const raw = process.argv.slice(2);
   const args = raw.filter((a, i) => !a.startsWith('--') && raw[i - 1] !== '--lazy' && raw[i - 1] !== '--hp');
   const verbose = process.argv.includes('--verbose');

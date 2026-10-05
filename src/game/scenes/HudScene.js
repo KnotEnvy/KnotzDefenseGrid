@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { POSTS, POST_ORDER, TARGET_MODE_LABEL } from '../../sim/data/posts.js';
 import { LEVEL_LORE, RUSK } from '../../sim/data/lore.js';
+import { ENEMIES } from '../../sim/data/enemies.js';
+import { getQuality, setQuality } from '../settings.js';
 import { GAME_W, GAME_H, FIELD, PANEL_X, FONT, COLOR, SC } from '../config.js';
 import { panel, button, txt, setText, STYLE } from '../ui/kit.js';
 import { statLines } from '../ui/describe.js';
@@ -33,6 +35,7 @@ export class HudScene extends Phaser.Scene {
     this.buildBanner();
     this.buildBossBar();
     this.buildPause();
+    this.buildIntel();
 
     // Rusk's opening lines
     const lore = LEVEL_LORE[gs.level.id];
@@ -41,6 +44,13 @@ export class HudScene extends Phaser.Scene {
     const onSay = cat => this.sayCategory(cat);
     const onWave = ({ index, wave }) => this.showBanner(index, wave);
     const onPause = p => this.pauseGroup.setVisible(p);
+    this.seen = new Set();
+    const onSpawn = ({ enemy }) => {
+      if (this.seen.has(enemy.type)) return;
+      this.seen.add(enemy.type);
+      this.intelQueue.push(ENEMIES[enemy.type]);
+    };
+    this.sim.on('spawn', onSpawn);
     gs.events.on('say', onSay);
     gs.events.on('waveStart', onWave);
     gs.events.on('paused', onPause);
@@ -214,19 +224,57 @@ export class HudScene extends Phaser.Scene {
     this.bossFill.fillStyle(boss.enraged ? 0xff4a3a : 0xc0283a, 1).fillRoundedRect(x, y, w * f, h, 3);
   }
 
+  // ------------------------------------------------------------------------------- enemy intel
+  buildIntel() {
+    this.intelQueue = [];
+    this.intelBusy = false;
+    const w = 440;
+    const x = FIELD.w / 2 - w / 2;
+    const y = FIELD.y + FIELD.h - 108;
+    this.intelBox = panel(this, x, y, w, 92, { fill: 0x1a0d0d, edge: 0x8a3c3c }).setAlpha(0);
+    this.intelIcon = this.add.image(x + 46, y + 46, 'enemy_cantoi').setAlpha(0);
+    this.intelTag = txt(this, x + 96, y + 10, 'NEW ENEMY', { fontFamily: FONT.mono, fontSize: 11, color: '#ff7a88', letterSpacing: 3 }).setAlpha(0);
+    this.intelName = txt(this, x + 96, y + 26, '', { ...STYLE.title, fontSize: 20, color: '#f1d9a0' }).setAlpha(0);
+    this.intelBlurb = txt(this, x + 96, y + 52, '', { ...STYLE.body, fontSize: 15, fontStyle: 'italic', color: '#d8ccb0', wordWrap: { width: w - 110 } }).setAlpha(0);
+    this.intelObjs = [this.intelBox, this.intelIcon, this.intelTag, this.intelName, this.intelBlurb];
+  }
+
+  pumpIntel() {
+    if (this.intelBusy || !this.intelQueue.length || this.gs.paused) return;
+    const def = this.intelQueue.shift();
+    this.intelBusy = true;
+    this.intelIcon.setTexture(`enemy_${def.id}`);
+    const sc = Math.min(1, 56 / Math.max(this.intelIcon.frame.width / 2, this.intelIcon.frame.height / 2)) * SC * 1.0;
+    this.intelIcon.setScale(sc);
+    setText(this.intelName, def.name);
+    setText(this.intelBlurb, def.blurb);
+    this.tweens.add({ targets: this.intelObjs, alpha: 1, duration: 300 });
+    this.tweens.add({
+      targets: this.intelObjs, alpha: 0, duration: 500, delay: 5200,
+      onComplete: () => (this.intelBusy = false)
+    });
+    this.gs.sfx?.play('click', { volume: 0.3, rate: 0.6 });
+  }
+
   // ------------------------------------------------------------------------------- pause / help
   buildPause() {
     const gs = this.gs;
     const g = this.add.group();
     const dim = this.add.rectangle(0, 0, GAME_W, GAME_H, 0x000000, 0.62).setOrigin(0).setInteractive();
-    const box = panel(this, GAME_W / 2 - 170, 190, 340, 320);
+    const box = panel(this, GAME_W / 2 - 170, 190, 340, 370);
     const t = txt(this, GAME_W / 2, 232, 'PAUSED', { ...STYLE.title, fontSize: 38 }).setOrigin(0.5);
     const sub = txt(this, GAME_W / 2, 270, '“Wait for the wheel to turn.”', { ...STYLE.body, fontSize: 16, fontStyle: 'italic', color: '#a89a80' }).setOrigin(0.5);
     const b1 = button(this, GAME_W / 2 - 110, 300, 220, 38, 'Resume', () => gs.togglePause(), { fontSize: 20 });
     const b2 = button(this, GAME_W / 2 - 110, 348, 220, 38, 'Restart Level', () => this.restart(), { fontSize: 20 });
     const b3 = button(this, GAME_W / 2 - 110, 396, 220, 38, 'Level Map', () => this.quit(), { fontSize: 20 });
     const b4 = button(this, GAME_W / 2 - 110, 444, 220, 38, 'Mute / Unmute', () => gs.sfx?.toggleMute(), { fontSize: 18 });
-    [dim, box, t, sub, b1.bg, b1.label, b1.zone, b2.bg, b2.label, b2.zone, b3.bg, b3.label, b3.zone, b4.bg, b4.label, b4.zone].forEach(o => g.add(o));
+    const b5 = button(this, GAME_W / 2 - 110, 492, 220, 38, '', () => {
+      const next = getQuality() === 'low' ? 'high' : 'low';
+      setQuality(next);
+      b5.setLabel(`Effects: ${next === 'low' ? 'Low' : 'High'} (on restart)`);
+    }, { fontSize: 15 });
+    b5.setLabel(`Effects: ${getQuality() === 'low' ? 'Low' : 'High'} (on restart)`);
+    [dim, box, t, sub, b1.bg, b1.label, b1.zone, b2.bg, b2.label, b2.zone, b3.bg, b3.label, b3.zone, b4.bg, b4.label, b4.zone, b5.bg, b5.label, b5.zone].forEach(o => g.add(o));
     g.setVisible(false);
     g.setDepth?.(500);
     this.pauseGroup = g;
@@ -301,6 +349,7 @@ export class HudScene extends Phaser.Scene {
     this.speedBtns.forEach((b, i) => b.bg.setAlpha(gs.speed === i + 1 ? 1 : 0.55));
     this.pathBtn.bg.setAlpha(gs.world.pathVisible ? 1 : 0.6);
     this.updateBossBar();
+    this.pumpIntel();
   }
 
   updateCard() {

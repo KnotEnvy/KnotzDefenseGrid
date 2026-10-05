@@ -1,0 +1,188 @@
+// End-to-end smoke test in real Chromium (WebGL via SwiftShader if there is no GPU).
+//
+//   npm run e2e                       # starts its own Vite dev server if none is running
+//   E2E_URL=http://127.0.0.1:5173 npm run e2e
+//
+// It walks the real flow (menu -> map -> level -> win -> results), loads every level with the heuristic bot,
+// fires both boss encounters, saves screenshots to test/e2e-out/, and FAILS on any console error / page error.
+
+import { chromium } from 'playwright-core';
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const OUT = path.resolve('test/e2e-out');
+fs.mkdirSync(OUT, { recursive: true });
+const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+let base = process.env.E2E_URL || 'http://127.0.0.1:5199';
+let server = null;
+
+const up = async url => {
+  try {
+    return (await fetch(url)).ok;
+  } catch {
+    return false;
+  }
+};
+
+async function ensureServer() {
+  if (await up(base)) return;
+  server = spawn('npx', ['vite', '--port', '5199', '--host', '127.0.0.1', '--strictPort'], { stdio: 'ignore' });
+  for (let i = 0; i < 60; i++) {
+    if (await up(base)) return;
+    await new Promise(r => setTimeout(r, 500));
+  }
+  throw new Error('could not start vite');
+}
+
+const errors = [];
+const log = (...a) => console.log(...a);
+let failed = false;
+const check = (cond, msg) => {
+  if (cond) log('  ok  ', msg);
+  else {
+    failed = true;
+    log('  FAIL', msg);
+  }
+};
+
+async function main() {
+  await ensureServer();
+  const browser = await chromium.launch({
+    executablePath: CHROME,
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required']
+  });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    const t = m.text();
+    if (/404|favicon|willReadFrequently/.test(t)) return;
+    errors.push(`console.error: ${t}`);
+  });
+
+  const settle = async key => {
+    await page.waitForFunction(k => window.__beam?.game.scene.isActive(k), key, { timeout: 180000 });
+    await page.waitForFunction(k => {
+      const s = window.__beam.game.scene.getScene(k);
+      return s.cameras?.main && !s.cameras.main.fadeEffect.isRunning;
+    }, key, { timeout: 180000 });
+    await page.waitForTimeout(800);
+  };
+  const shot = name => page.screenshot({ path: path.join(OUT, `${name}.png`) });
+  const gameReady = () => page.waitForFunction(() => window.__beam?.scene?.sim && window.__beam.game.scene.isActive('Game'), null, { timeout: 180000 });
+
+  // ------------------------------------------------------------------ menu -> map -> level 1
+  log('menu / map');
+  await page.goto(`${base}/?fx=low&unlock`);
+  await settle('Menu');
+  await shot('01-menu');
+  await page.evaluate("window.__beam.game.scene.getScene('Menu').go('Select')");
+  await settle('Select');
+  await shot('02-map');
+  check(await page.evaluate("window.__beam.game.scene.getScene('Select').nodes.length") === 5, 'map shows 5 Waystations');
+
+  // ------------------------------------------------------------------ every level loads and fights
+  const bot = `import('/test/bot.mjs').then(m => { window.__Bot = m.Bot; })`;
+  for (let lv = 1; lv <= 5; lv++) {
+    log(`level ${lv}`);
+    await page.goto(`${base}/?fx=low&level=${lv}`);
+    await gameReady();
+    await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
+    await page.evaluate(bot);
+    const info = await page.evaluate(async () => {
+      const s = window.__beam.scene;
+      const sim = s.sim;
+      const b = new window.__Bot(sim, { seed: 5 });
+      sim.nextWaveIn = 0.5;
+      for (let i = 0; i < 60 * 150 && sim.state === 'play'; i++) {
+        sim.update(1 / 60);
+        b.tick();
+      }
+      return { t: Math.round(sim.time), posts: sim.posts.length, wave: sim.waveIndex, shards: sim.shardsRemaining, kills: sim.stats.kills, views: s.postViews.size };
+    });
+    await page.waitForTimeout(2500); // let a few frames render the aftermath
+    await shot(`10-level${lv}`);
+    check(info.posts >= 3 && info.views === info.posts, `level ${lv}: bot built ${info.posts} posts, views in sync (${info.views})`);
+    check(info.kills > 0, `level ${lv}: ${info.kills} enemies killed in ${info.t}s`);
+  }
+
+  // ------------------------------------------------------------------ bosses
+  for (const [lv, boss] of [[3, 'bear'], [5, 'ashe']]) {
+    log(`boss ${boss}`);
+    await page.goto(`${base}/?fx=low&level=${lv}&all`);
+    await gameReady();
+    await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
+    await page.evaluate(bot);
+    const r = await page.evaluate(async b => {
+      const s = window.__beam.scene;
+      const sim = s.sim;
+      const bt = new window.__Bot(sim, { seed: 9 });
+      sim.silver = 4000;
+      for (let i = 0; i < 60 * 40; i++) { sim.update(1 / 60); bt.tick(); }
+      sim.waveIndex = sim.totalWaves - 1; // jump to the boss wave
+      sim.nextWaveIn = 0.1;
+      let seen = false;
+      let hexes = 0;
+      sim.on('hex', () => hexes++);
+      for (let i = 0; i < 60 * 25; i++) { sim.update(1 / 60); bt.tick(); if (sim.enemies.some(e => e.type === b)) seen = true; }
+      return { seen, hexes, alive: sim.enemies.some(e => e.type === b) };
+    }, boss);
+    await page.waitForTimeout(2500);
+    await shot(`20-boss-${boss}`);
+    check(r.seen, `${boss} spawned`);
+    if (boss === 'ashe') check(r.hexes > 0 || !r.alive, 'Ashe hexed a post (or was already put down)');
+  }
+
+  // ------------------------------------------------------------------ full win -> results -> progress
+  log('full win on level 1 + results');
+  await page.goto(`${base}/?fx=low&level=1`);
+  await gameReady();
+  await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
+  await page.evaluate(bot);
+  const win = await page.evaluate(async () => {
+    const s = window.__beam.scene;
+    const sim = s.sim;
+    const b = new window.__Bot(sim, { seed: 7 });
+    for (let i = 0; i < 60 * 900 && sim.state === 'play'; i++) {
+      sim.update(1 / 60);
+      b.tick();
+    }
+    return { state: sim.state, stars: sim.stars(), shards: sim.shardsRemaining };
+  });
+  check(win.state === 'won', `level 1 won by the bot (${win.shards} shards, ${win.stars} stars)`);
+  await settle('Result');
+  await shot('30-result');
+  const prog = await page.evaluate(() => JSON.parse(localStorage.getItem('beamfall.progress') || '{}'));
+  check(prog['dry-creek']?.done === true && prog['dry-creek'].stars >= 1, 'progress saved to localStorage');
+
+  // ------------------------------------------------------------------ a lost level
+  log('defeat flow');
+  await page.goto(`${base}/?fx=low&level=1`);
+  await gameReady();
+  await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
+  await page.evaluate(() => {
+    const s = window.__beam.scene;
+    const sim = s.sim;
+    sim.nextWaveIn = 0.1;
+    for (let i = 0; i < 60 * 400 && sim.state === 'play'; i++) sim.update(1 / 60);
+  });
+  await settle('Result');
+  await shot('31-defeat');
+  check(await page.evaluate("window.__beam.game.scene.getScene('Result').r.won === false"), 'defeat reaches the Result scene');
+
+  await browser.close();
+  log(errors.length ? `\n${errors.length} browser error(s):\n${errors.join('\n')}` : '\nno browser errors');
+  if (errors.length) failed = true;
+}
+
+main()
+  .catch(e => {
+    console.error(e);
+    failed = true;
+  })
+  .finally(() => {
+    server?.kill();
+    process.exit(failed ? 1 : 0);
+  });

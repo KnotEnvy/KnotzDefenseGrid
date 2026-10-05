@@ -4,3 +4,4 @@ spike/
 *.log
 .DS_Store
 .vite/
+test/e2e-out/

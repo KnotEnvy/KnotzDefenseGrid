@@ -131,20 +131,22 @@ Post-campaign: **The Wheel Turns** (endless, scaling waves) on any cleared map.
 | Phaser 4 feature | Used for |
 |---|---|
 | **WebGL renderer / RenderNodes** | Entire game is WebGL-only (`Phaser.WEBGL`); no canvas fallback |
-| **Camera Filters** (`filters.internal/external`) | Bloom (via `Actions.AddEffectBloom`), Vignette, ColorMatrix grading, damage tint, Barrel/Displacement "thinny" ripple at the Doorway, Wipe scene transitions |
-| **Object Filters** | Glow on shards & selection, Shadow on posts, Mask for reveal effects |
-| **Dynamic Lighting** (`setLighting`, point + cone lights) | Dusk ambient; every shot throws a flash light; Ka-Tet Fire flickers; Beam Conduit lights the dust |
-| **Normal maps** | Terrain relief lit by muzzle flash (noise-generated) |
-| **Gradient** game object | Sky, horizon glow, Beam halo, UI sheen |
-| **Noise / NoiseSimplex2D / NoiseCell2D** game objects | Dust & fog banks, terrain mottling, thinny static |
-| **SpriteGPULayer** | Thousands of GPU-animated devil-grass tufts swaying in the wind (single draw call) |
-| **TilemapGPULayer** | Ground tiles |
-| **CaptureFrame** | Wizard's Glass negative/refraction pulse |
-| **RenderTexture / DynamicTexture / Stamp** | Persistent scorch decals; procedural glow sprites |
-| **Particles** (lit, GravityWell, EmitZone, DeathZone, colorEase) | Muzzle flash, shell casings, embers, Orb sparks, Mortar blasts, dust |
-| **Grid & rounded-Rectangle shapes** | Build grid overlay, UI chrome |
-| **Camera effects** | Shake/flash/zoom-punch/pan |
-| **Tweens, Timeline** | Wave banners, intro cinematic |
+| **Dynamic Lighting** (`setLighting`, point lights) | Dusk ambient + a low western "sun"; every shot throws a pooled flash light; Ka-Tet Fire flickers; the Waystation and Doorways glow. Ground, boulders, posts, enemies, particles and GPU layers are all lit |
+| **Normal maps** | Terrain is painted procedurally with a matching normal map (`art/terrain.js`), so muzzle flashes rake across real relief |
+| **SpriteGPULayer** | Thousands of GPU-animated devil-grass tufts (and menu stars/foreground grass) swaying forever in one draw call |
+| **Gradient** game object | Sky, Doorway portal glow and expanding thinny ripples, the Waystation beacon, Beam streaks in the menu sky |
+| **NoiseSimplex2D** game object | Drifting fog banks and cloud shadows; a live noise field is rendered to a texture to drive the thinny ripple's `Displacement` |
+| **Camera Filters** | Hand-built bloom (`ParallelFilters` + RGB-only `Threshold` + `Blur`), `ColorMatrix` grade, `Vignette`, red danger wash |
+| **Localized filters** (`ParallelFilters` + `Mask`) | Doorway "thinny" ripple and the Wizard's Glass negative, each confined to an expanding circle |
+| **Object Filters** | `Glow` on the selected post and on title text |
+| **Particles** (lit, emit zones, callbacks) | Muzzle flash, casings, embers, Orb sparks, blasts, dust, portal vortex, campfires |
+| **RenderTexture** | Persistent scorch and ichor decals |
+| **Grid shape** | Build-grid overlay |
+| **Camera effects, Tweens, Time** | Shake, flash, fade, zoom drift, banners, floating text |
+| **Scene management** | A separate HUD scene with its own camera that is never filtered |
+
+*Considered and skipped:* `TilemapGPULayer` (the 32x20 ground is one painted, lit image so it can carry a normal map;
+a tilemap would only add repetition), `CaptureFrame` (the Glass negative is done with a masked parallel filter instead).
 
 ## 9. Technical architecture
 
