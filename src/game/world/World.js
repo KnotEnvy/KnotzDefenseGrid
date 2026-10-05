@@ -69,7 +69,7 @@ export class World {
       for (let cy = rect.cy; cy < rect.cy + rect.h; cy++) {
         for (let cx = rect.cx; cx < rect.cx + rect.w; cx++) {
           if (Math.random() > density) continue;
-          add((cx + 0.5) * CELL + rr(-6, 6), (cy + 0.5) * CELL + rr(-6, 6), rr(44, 62), rr(0, Math.PI * 2));
+          add((cx + 0.5) * CELL + rr(-4, 4), (cy + 0.5) * CELL + rr(-4, 4), rr(38, 52), rr(0, Math.PI * 2));
         }
       }
     }

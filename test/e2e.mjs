@@ -172,6 +172,39 @@ async function main() {
   await shot('31-defeat');
   check(await page.evaluate("window.__beam.game.scene.getScene('Result').r.won === false"), 'defeat reaches the Result scene');
 
+  // ------------------------------------------------------------------ real mouse + keyboard
+  log('real input (mouse + keyboard)');
+  await page.goto(`${base}/?fx=low&level=1&silver=600`);
+  await gameReady();
+  await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
+  const st = () => page.evaluate(() => { const s = window.__beam.scene; return { posts: s.sim.posts.length, build: s.buildType, sel: s.selected?.type ?? null, lvl: s.selected?.level ?? null, mode: s.selected?.mode ?? null, speed: s.speed, paused: s.paused, silver: Math.floor(s.sim.silver) }; });
+  const act = async (fn, wait = 1500) => { await fn(); await page.waitForTimeout(wait); return st(); };
+  let r = await act(() => page.mouse.click(1150, 55)); // HUD: Sixgun
+  check(r.build === 'sixgun', 'clicking the HUD button enters build mode');
+  await page.mouse.move(600, 150);
+  await page.waitForTimeout(800);
+  r = await act(() => page.mouse.click(600, 150), 2000);
+  check(r.posts === 1 && r.silver < 600, 'clicking the field builds a post and spends silver');
+  r = await act(() => page.mouse.click(300, 150, { button: 'right' }));
+  check(r.build === null, 'right-click cancels build mode');
+  r = await act(() => page.mouse.click(600, 150));
+  check(r.sel === 'sixgun', 'clicking a post selects it');
+  r = await act(() => page.keyboard.press('u'));
+  check(r.lvl === 1, 'U upgrades the selected post');
+  r = await act(() => page.keyboard.press('t'));
+  check(r.mode === 'closest', 'T cycles the targeting mode');
+  r = await act(() => page.keyboard.press('f'));
+  check(r.speed === 2, 'F cycles game speed');
+  const before = r.silver;
+  r = await act(() => page.keyboard.press(' '));
+  check(r.silver > before, 'Space calls the next wave early for a bonus');
+  r = await act(() => page.mouse.click(300, 600));
+  check(r.sel === null, 'clicking empty ground deselects');
+  r = await act(() => page.keyboard.press('p'));
+  check(r.paused === true, 'P pauses');
+  r = await act(() => page.mouse.click(640, 319)); // pause menu: Resume
+  check(r.paused === false, 'the pause menu Resume button resumes');
+
   // ------------------------------------------------------------------ endless mode
   log('endless mode (The Wheel Turns)');
   await page.goto(`${base}/?fx=low&level=3&endless`);

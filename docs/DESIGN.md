@@ -124,7 +124,10 @@ Each post has 3 tiers. Unlocks are gradual per level (see §7).
 | 4 | **Lud's Spur** | 12 | Maerlyn's Orb | Spiral rail maze; Breakers; Brutes; Rusk's last stand |
 | 5 | **The Doorway at Algul Siento** | 12 | Wizard's Glass | Three doorways; **Corvin Ashe** |
 
-Post-campaign: **The Wheel Turns** (endless, scaling waves) on any cleared map.
+Post-campaign: **The Wheel Turns** — endless mode, unlocked by clearing the finale. Waves are generated from a threat
+budget that grows every wave (`sim/data/endless.js`); the roster widens as waves climb (Low Men at 4, swarms and crows at 6,
+Breakers at 9, Brutes at 12) and the bosses return every tenth wave (Bear at 10, Ashe at 20, alternating). Score is waves held;
+the best per Waystation is saved.
 
 ## 8. Phaser 4 feature map (what we lean on, and where)
 
@@ -169,3 +172,24 @@ without touching the rules.
 
 No binary art or audio assets ship: sprites are hand-authored SVG, terrain/glow textures are
 generated procedurally at boot, and all sound is synthesized into `AudioBuffer`s.
+
+## 10. Balance method
+
+`test/bot.mjs` is a heuristic player (place posts where they cover the most road, upgrade what is killing things). Sweeping
+enemy HP shows where each level stops being a 3-star walkover for it (`node test/bot.mjs --hp 2.5 --seeds`). Per-level `hp`
+multipliers were set so the margin shrinks from roughly 3x on Dry Creek to roughly 1.5-2x on Algul Siento:
+
+| Level | HP multiplier | Bot first leaks at (HP scale) |
+|---|---|---|
+| 1 Dry Creek | 3.4 | ~2.5x |
+| 2 Cinder-Road | 1.6 | ~2.5-3x |
+| 3 Thunderclap | 1.4 | ~2x |
+| 4 Lud's Spur | 1.7 | ~1.5-2x |
+| 5 Algul Siento | 1.15 | ~1.5-2x |
+
+The bot never builds deliberate mazes, so a human using the grid well should have more headroom than these numbers suggest.
+
+## 11. Ideas not built
+
+Concussion/missile posts, a hero ability bar, post-specific enemy resistances beyond armor, a second hex-style boss
+mechanic on the Bear, spoken narration, gamepad support.

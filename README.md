@@ -76,7 +76,7 @@ URL switches for testing: `?level=3` (jump to a level), `?all` (all posts unlock
 
 Five Waystations (Dry Creek → Gilead's Cinder-Road → Thunderclap Flats → Lud's Spur → The Doorway at Algul Siento)
 with a boss at Thunderclap (**the Iron Bear**) and the finale (**Corvin Ashe**, who hexes your posts).
-Three difficulties: Pilgrim / Gunslinger / Last Line.
+Three difficulties: Pilgrim / Gunslinger / Last Line. Clear the finale to unlock **The Wheel Turns**: endless, escalating waves on any Waystation (best waves-held is saved per map).
 
 ---
 
@@ -140,9 +140,9 @@ level headlessly for balance**, and keeps presentation free to change.
 ### Tests
 
 ```bash
-npm test                    # unit tests (grid, pathing, shards, economy, determinism, bosses)
+npm test                    # unit tests: grid/pathing, shards, economy, determinism, bosses, endless waves, audio synthesis
 npm run bot                 # headless bot plays all levels      (node test/bot.mjs 3 --hp 2 --seeds)
-npm run e2e                 # Chromium: menu -> map -> every level -> bosses -> win -> results -> defeat
+npm run e2e                 # Chromium: menu -> map -> every level -> bosses -> real mouse/keyboard -> endless -> win -> results -> defeat
 ```
 
 `bot.mjs` sweeps difficulty (`--hp 1.5`, `--lazy 0.6`, `--seeds`) and is how each level's `hp` multiplier was tuned so
@@ -151,3 +151,11 @@ that the margin shrinks from ~3× on level 1 to ~1.5–2× on level 5.
 ### Effects quality
 
 Menu → *Effects: High/Low* (or `?fx=low`). Low drops bloom, fog, cloud shadows and the lens effects, and thins the grass.
+
+### Known limitations
+
+* Frame rate on real GPUs is unmeasured: development happened in a headless container where WebGL runs in software
+  (~2 fps). The full-screen effects (bloom, noise fog, lens filters) are the expensive part; *Effects: Low* removes them.
+* Balance was tuned with a heuristic bot, not human playtests. Expect the numbers in `src/sim/data/` to need a pass.
+* The audio is fully synthesised and covered by sanity tests, but nobody has *listened* to it yet.
+* Touch input works for building/selecting, but there is no right-click equivalent for cancelling (tap the active post button again).

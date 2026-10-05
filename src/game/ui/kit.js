@@ -37,7 +37,7 @@ export function button(scene, x, y, w, h, label, onClick, opts = {}) {
   const bg = scene.add.graphics();
   const t = txt(scene, x + w / 2, y + h / 2, label, { fontFamily: font, fontSize, color, align: 'center' }).setOrigin(0.5);
   const zone = scene.add.zone(x, y, w, h).setOrigin(0).setInteractive({ useHandCursor: true });
-  const state = { enabled: true, hover: false };
+  const state = { enabled: true, hover: false, visible: true };
   const draw = () => {
     bg.clear();
     const f = !state.enabled ? 0x1a1410 : state.hover ? hover : fill;
@@ -73,6 +73,8 @@ export function button(scene, x, y, w, h, label, onClick, opts = {}) {
       setText(t, s);
     },
     setVisible(v) {
+      if (state.visible === v) return; // called every frame by the HUD: only touch input when it changes
+      state.visible = v;
       bg.setVisible(v);
       t.setVisible(v);
       if (v) zone.setInteractive();

@@ -36,6 +36,8 @@ export class HudScene extends Phaser.Scene {
     this.buildBossBar();
     this.buildPause();
     this.buildIntel();
+    // first-run nudge on level 1
+    this.firstHint = txt(this, PX - 14, 58, 'Choose a post  ▸', { fontFamily: FONT.mono, fontSize: 18, color: '#ffe08a', stroke: '#120c08', strokeThickness: 5 }).setOrigin(1, 0.5).setVisible(false);
 
     // Rusk's opening lines
     const lore = LEVEL_LORE[gs.level.id];
@@ -352,6 +354,9 @@ export class HudScene extends Phaser.Scene {
     this.pathBtn.bg.setAlpha(gs.world.pathVisible ? 1 : 0.6);
     this.updateBossBar();
     this.pumpIntel();
+    const nudge = gs.level.number === 1 && !gs.endless && sim.posts.length === 0 && !gs.buildType && !gs.paused;
+    this.firstHint.setVisible(nudge);
+    if (nudge) this.firstHint.setAlpha(0.55 + 0.45 * Math.sin(this.time.now / 220));
   }
 
   updateCard() {
