@@ -198,10 +198,12 @@ const SFX = {
   }
 };
 
+export { SFX as SFX_GENERATORS };
+
 // E-phrygian-ish scale (Hz): E3 F3 G3 A3 B3 C4 D4 E4
 const SCALE = [164.81, 174.61, 196.0, 220.0, 246.94, 261.63, 293.66, 329.63];
 
-function musicBuffer(ctx, kind) {
+export function musicBuffer(ctx, kind) {
   const sr = ctx.sampleRate;
   const secs = kind === 'menu' ? 36 : 32;
   const n = Math.floor(sr * secs);

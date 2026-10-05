@@ -15,6 +15,11 @@ thieves before they escape, and keep the Tower standing.
 are original; the world is borrowed with love. See [`docs/DESIGN.md`](docs/DESIGN.md) for the story bible and the
 reasoning behind every mechanic.*
 
+<p align="center">
+  <img src="docs/img/game.jpg" alt="Gameplay: a tier-3 Beam Conduit selected while posts defend the Waystation" width="860"><br>
+  <img src="docs/img/menu.jpg" alt="Title screen" width="425"> <img src="docs/img/map.jpg" alt="The Path of the Beam" width="425">
+</p>
+
 ---
 
 ## Play
