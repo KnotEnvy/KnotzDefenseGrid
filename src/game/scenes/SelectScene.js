@@ -136,10 +136,21 @@ export class SelectScene extends Phaser.Scene {
       b.setLabel(DIFFICULTY[id].name);
       return b;
     });
-    this.diffNote = txt(this, 700, y0 + 94, '', { fontFamily: FONT.body, fontSize: 16, fontStyle: 'italic', color: '#a89a80' }).setDepth(31);
+    this.diffNote = txt(this, 700, y0 + 88, '', { fontFamily: FONT.body, fontSize: 16, fontStyle: 'italic', color: '#a89a80' }).setDepth(31);
     this.startBtn = button(this, 700, y0 + 150, 440, 56, 'Ride out  ▸', () => this.start(), { fontSize: 30, font: FONT.title, fill: 0x3a2610, edge: 0xd6b25e, hover: 0x553a1a });
     [this.startBtn.bg, this.startBtn.label, this.startBtn.zone].forEach(o => o.setDepth(32));
+    this.endlessBtn = button(this, 700, y0 + 112, 440, 32, 'Mode: Campaign', () => {
+      if (!this.canEndless(this.sel)) return;
+      this.endless = !this.endless;
+      this.refreshDiff();
+    }, { fontSize: 15, font: FONT.mono });
+    [this.endlessBtn.bg, this.endlessBtn.label, this.endlessBtn.zone].forEach(o => o.setDepth(32));
+    this.endless = false;
     this.refreshDiff();
+  }
+
+  canEndless(i) {
+    return this.unlockAll || !!this.prog[LEVELS[LEVELS.length - 1].id]?.done;
   }
 
   refreshDiff() {
@@ -150,16 +161,21 @@ export class SelectScene extends Phaser.Scene {
       b.bg.lineStyle(2, on ? 0xffe08a : 0x8a6a3c, 1).strokeRoundedRect(b.x0, b.y0, 142, 44, 7);
     }
     setText(this.diffNote, DIFFICULTY[this.difficulty].blurb);
+    const can = this.sel === undefined ? false : this.canEndless(this.sel);
+    if (!can) this.endless = false;
+    this.endlessBtn.setVisible(can);
+    this.endlessBtn.setLabel(this.endless ? 'Mode: The Wheel Turns (endless)' : 'Mode: Campaign   [click for endless]');
   }
 
   select(i) {
     this.sel = i;
     this.nodes.forEach((n, k) => n.draw(false, k === i));
+    if (this.endlessBtn) this.refreshDiff();
     const lv = LEVELS[i];
     const done = this.prog[lv.id];
     setText(this.dName, `${lv.number}. ${lv.name}`);
     setText(this.dSub, lv.subtitle);
-    setText(this.dInfo, `${lv.shards} shards to hold   ·   ${lv.waves.length} waves   ·   ${new Set(lv.map.join('').match(/[1-4]/g)).size} doorway${new Set(lv.map.join('').match(/[1-4]/g)).size > 1 ? 's' : ''}\nBest: ${done?.done ? '★'.repeat(done.stars) + '☆'.repeat(3 - done.stars) : 'not yet cleared'}`);
+    setText(this.dInfo, `${lv.shards} shards to hold   ·   ${lv.waves.length} waves   ·   ${new Set(lv.map.join('').match(/[1-4]/g)).size} doorway${new Set(lv.map.join('').match(/[1-4]/g)).size > 1 ? 's' : ''}\nBest: ${done?.done ? '★'.repeat(done.stars) + '☆'.repeat(3 - done.stars) : 'not yet cleared'}${this.prog[lv.id + '-endless']?.best ? `   ·   Wheel: ${this.prog[lv.id + '-endless'].best} waves` : ''}`);
     this.dPosts.clear(true, true);
     const types = POST_ORDER.filter(t => lv.unlocks.includes(t));
     types.forEach((t, k) => {
@@ -175,7 +191,7 @@ export class SelectScene extends Phaser.Scene {
   start() {
     this.registry.set('difficulty', this.difficulty);
     this.sfx?.play('click', { volume: 0.7 });
-    startLevelFlow(this, this.sel, this.difficulty);
+    startLevelFlow(this, this.sel, this.difficulty, { endless: this.endless });
   }
 
   leave(scene) {

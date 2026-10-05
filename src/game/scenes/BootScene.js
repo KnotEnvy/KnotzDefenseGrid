@@ -26,7 +26,7 @@ export class BootScene extends Phaser.Scene {
       this.cameras.main.fadeOut(350, 7, 5, 10);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         const q = new URLSearchParams(location.search);
-        if (q.has('level')) this.scene.start('Game', { level: Number(q.get('level')) - 1, difficulty: q.get('diff') || 'normal' });
+        if (q.has('level')) this.scene.start('Game', { level: Number(q.get('level')) - 1, difficulty: q.get('diff') || 'normal', endless: q.has('endless') });
         else this.scene.start('Menu');
       });
     })();

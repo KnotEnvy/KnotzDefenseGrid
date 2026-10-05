@@ -2,13 +2,13 @@
 import { LEVELS } from '../../sim/data/levels.js';
 import { LEVEL_LORE } from '../../sim/data/lore.js';
 
-export function startLevelFlow(scene, levelIndex, difficulty = 'normal', { skipBriefing = false } = {}) {
+export function startLevelFlow(scene, levelIndex, difficulty = 'normal', { skipBriefing = false, endless = false } = {}) {
   const level = LEVELS[levelIndex];
   const lore = LEVEL_LORE[level.id];
   const go = () => {
     scene.cameras.main.fadeOut(500, 7, 5, 10);
     scene.cameras.main.once('camerafadeoutcomplete', () => {
-      if (skipBriefing || !lore) scene.scene.start('Game', { level: levelIndex, difficulty });
+      if (skipBriefing || endless || !lore) scene.scene.start('Game', { level: levelIndex, difficulty, endless });
       else
         scene.scene.start('Story', {
           title: `${level.number}. ${level.name}`,

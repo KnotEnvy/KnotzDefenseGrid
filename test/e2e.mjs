@@ -172,6 +172,34 @@ async function main() {
   await shot('31-defeat');
   check(await page.evaluate("window.__beam.game.scene.getScene('Result').r.won === false"), 'defeat reaches the Result scene');
 
+  // ------------------------------------------------------------------ endless mode
+  log('endless mode (The Wheel Turns)');
+  await page.goto(`${base}/?fx=low&level=3&endless`);
+  await gameReady();
+  await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
+  await page.evaluate(bot);
+  const en = await page.evaluate(async () => {
+    const s = window.__beam.scene;
+    const sim = s.sim;
+    const b = new window.__Bot(sim, { seed: 4 });
+    sim.silver = 1500;
+    for (let i = 0; i < 60 * 240 && sim.state === 'play'; i++) {
+      sim.update(1 / 60);
+      b.tick();
+    }
+    return { endless: sim.level.endless, started: sim.waveIndex, held: sim.wavesHeld, total: sim.totalWaves };
+  });
+  check(en.endless && en.total === Infinity && en.started >= 3, `endless: ${en.started} waves started, ${en.held} held`);
+  await page.evaluate(() => {
+    const sim = window.__beam.scene.sim;
+    for (let i = 0; i < 60 * 3000 && sim.state === 'play'; i++) sim.update(1 / 60); // let it run until the Beam snaps
+  });
+  await settle('Result');
+  await shot('32-endless-result');
+  check(await page.evaluate("window.__beam.game.scene.getScene('Result').r.endless === true"), 'endless run reaches the Result scene');
+  const eprog = await page.evaluate(() => JSON.parse(localStorage.getItem('beamfall.progress') || '{}'));
+  check(typeof eprog['thunderclap-endless']?.best === 'number', 'endless best saved to localStorage');
+
   await browser.close();
   log(errors.length ? `\n${errors.length} browser error(s):\n${errors.join('\n')}` : '\nno browser errors');
   if (errors.length) failed = true;

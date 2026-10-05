@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_W as W, GAME_H as H, FONT } from '../config.js';
 import { LEVELS } from '../../sim/data/levels.js';
-import { LEVEL_LORE, RUSK, CREDITS } from '../../sim/data/lore.js';
+import { LEVEL_LORE, RUSK, CREDITS, ENDLESS_LORE } from '../../sim/data/lore.js';
 import { skyBackdrop } from '../ui/backdrop.js';
 import { installBasicFx } from '../fx/PostFx.js';
 import { button, panel, txt } from '../ui/kit.js';
@@ -31,10 +31,10 @@ export class ResultScene extends Phaser.Scene {
       towerX: 1030, towerH: 440, grass: true
     });
     installBasicFx(this);
-    const finalWin = r.won && r.level === LEVELS.length - 1;
+    const finalWin = r.won && !r.endless && r.level === LEVELS.length - 1;
 
-    const title = txt(this, W / 2, 96, r.won ? (finalWin ? 'THE BEAM HOLDS' : 'THE BEAM HOLDS') : 'THE BEAM SNAPS', {
-      fontFamily: FONT.title, fontSize: 88, color: r.won ? '#e9c46a' : '#e05566', stroke: '#120c08', strokeThickness: 10
+    const title = txt(this, W / 2, 96, r.endless ? 'THE WHEEL TURNS' : 'THE BEAM HOLDS', {
+      fontFamily: FONT.title, fontSize: 88, color: r.won || r.endless ? '#e9c46a' : '#e05566', stroke: '#120c08', strokeThickness: 10
     }).setOrigin(0.5).setDepth(30);
     title.enableFilters();
     const glow = title.filters.internal.addGlow(r.won ? 0xffb040 : 0xff2a40, 3, 0, 1, false, 8, 10);
@@ -46,8 +46,11 @@ export class ResultScene extends Phaser.Scene {
 
     // stars
     const g = this.add.graphics().setDepth(31);
-    for (let s = 0; s < 3; s++) starPoly(g, W / 2 - 90 + s * 90, 232, 34, 15, 0x2a2018, 1);
-    if (r.won) {
+    if (r.endless) {
+      txt(this, W / 2, 232, `${r.wavesHeld}`, { fontFamily: FONT.title, fontSize: 64, color: '#f1d9a0', stroke: '#120c08', strokeThickness: 8 }).setOrigin(0.5).setDepth(31);
+      txt(this, W / 2, 278, r.wavesHeld === 1 ? 'wave held' : 'waves held', { fontFamily: FONT.mono, fontSize: 14, color: '#a89a80', letterSpacing: 3 }).setOrigin(0.5).setDepth(31);
+    } else for (let s = 0; s < 3; s++) starPoly(g, W / 2 - 90 + s * 90, 232, 34, 15, 0x2a2018, 1);
+    if (r.won && !r.endless) {
       for (let s = 0; s < r.stars; s++) {
         this.time.delayedCall(900 + s * 520, () => {
           const x = W / 2 - 90 + s * 90;
@@ -63,12 +66,9 @@ export class ResultScene extends Phaser.Scene {
     // stats
     const mins = Math.floor(r.time / 60);
     const secs = String(r.time % 60).padStart(2, '0');
-    const stats = [
-      ['Shards held', `${r.shards} / ${r.total}`],
-      ['Thieves put down', `${r.kills}`],
-      ['Shards recovered', `${r.recovered}`],
-      ['Time on the road', `${mins}:${secs}`]
-    ];
+    const stats = r.endless
+      ? [['Waves held', `${r.wavesHeld}`], ['Best on this road', `${r.best ?? r.wavesHeld}`], ['Thieves put down', `${r.kills}`], ['Time on the road', `${mins}:${secs}`]]
+      : [['Shards held', `${r.shards} / ${r.total}`], ['Thieves put down', `${r.kills}`], ['Shards recovered', `${r.recovered}`], ['Time on the road', `${mins}:${secs}`]];
     panel(this, 160, 290, 360, 190, { alpha: 0.9 }).setDepth(30);
     stats.forEach(([k, v], i) => {
       txt(this, 186, 308 + i * 42, k, { fontFamily: FONT.body, fontSize: 20, color: '#b8a888' }).setDepth(31);
@@ -78,15 +78,15 @@ export class ResultScene extends Phaser.Scene {
     // epilogue
     panel(this, 550, 290, 570, 190, { alpha: 0.9 }).setDepth(30);
     const body = txt(this, 576, 308, '', { fontFamily: FONT.body, fontSize: 21, fontStyle: 'italic', color: '#e8dcc0', wordWrap: { width: 520 }, lineSpacing: 4 }).setDepth(31);
-    const line = r.won ? (lore?.outro ?? RUSK.win[0]) : Phaser.Utils.Array.GetRandom(RUSK.lose);
+    const line = r.endless ? ENDLESS_LORE : r.won ? (lore?.outro ?? RUSK.win[0]) : Phaser.Utils.Array.GetRandom(RUSK.lose);
     this.time.delayedCall(r.won ? 1400 : 500, () => typewriter(this, body, line, { cps: 42, sfx }));
 
     // buttons
     const by = 520;
     const btns = [];
-    if (r.won && r.level < LEVELS.length - 1) btns.push(['Next Waystation  ▸', () => startLevelFlow(this, r.level + 1, r.difficulty)]);
+    if (r.won && !r.endless && r.level < LEVELS.length - 1) btns.push(['Next Waystation  ▸', () => startLevelFlow(this, r.level + 1, r.difficulty)]);
     if (finalWin) btns.push(['Credits', () => this.credits()]);
-    btns.push([r.won ? 'Replay' : 'Try Again', () => startLevelFlow(this, r.level, r.difficulty, { skipBriefing: true })]);
+    btns.push([r.endless ? 'Another Turn' : r.won ? 'Replay' : 'Try Again', () => startLevelFlow(this, r.level, r.difficulty, { skipBriefing: true, endless: !!r.endless })]);
     btns.push(['Path of the Beam', () => this.leave('Select')]);
     const bw = 300;
     const total = btns.length * bw + (btns.length - 1) * 20;

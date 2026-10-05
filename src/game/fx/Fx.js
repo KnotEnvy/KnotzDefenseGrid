@@ -252,7 +252,7 @@ export class Fx {
       if (enemy.boss) {
         this.shake(900, 0.006);
         sfx.play('roar', { volume: 1 });
-        scene.cameras.main.flash(500, 120, 20, 40);
+        scene.cameras.main.flash(380, 110, 16, 36);
       }
       this.smoke.emitParticleAt(enemy.x, enemy.y, 1);
     });

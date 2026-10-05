@@ -3,6 +3,7 @@ import { Sim, FIXED_DT } from '../../sim/sim.js';
 import { LEVELS } from '../../sim/data/levels.js';
 import { POSTS, POST_ORDER, TARGET_MODES } from '../../sim/data/posts.js';
 import { DIFFICULTY } from '../../sim/data/difficulty.js';
+import { makeEndlessLevel } from '../../sim/data/endless.js';
 import { CELL, COLS, ROWS } from '../../sim/grid.js';
 import { FIELD, DEPTH, GAME_W, SC, FONT } from '../config.js';
 import { World } from '../world/World.js';
@@ -28,7 +29,7 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     const q = new URLSearchParams(location.search);
-    this.level = LEVELS[this.levelIndex];
+    this.level = this.endless ? makeEndlessLevel(LEVELS[this.levelIndex]) : LEVELS[this.levelIndex];
     const diff = DIFFICULTY[this.difficulty] ?? DIFFICULTY.normal;
     this.sfx = this.registry.get('sfx');
 
@@ -287,8 +288,15 @@ export class GameScene extends Phaser.Scene {
     this.ended = true;
     const sim = this.sim;
     this.sfx?.play(won ? 'win' : 'lose', { volume: 0.9 });
-    const result = { won, stars, level: this.levelIndex, difficulty: this.difficulty, shards: sim.shardsRemaining, total: sim.level.shards, kills: sim.stats.kills, time: Math.round(sim.time), recovered: sim.stats.shardsRecovered, lost: sim.stats.shardsLost };
-    if (won) {
+    const result = { endless: this.endless, wavesHeld: sim.wavesHeld, won, stars, level: this.levelIndex, difficulty: this.difficulty, shards: sim.shardsRemaining, total: sim.level.shards, kills: sim.stats.kills, time: Math.round(sim.time), recovered: sim.stats.shardsRecovered, lost: sim.stats.shardsLost };
+    if (this.endless) {
+      const prog = loadProgress();
+      const key = this.level.id;
+      prog[key] = { best: Math.max(prog[key]?.best ?? 0, sim.wavesHeld) };
+      saveProgress(prog);
+      this.registry.set('progress', prog);
+      result.best = prog[key].best;
+    } else if (won) {
       const prog = loadProgress();
       const key = this.level.id;
       const best = prog[key]?.stars ?? 0;

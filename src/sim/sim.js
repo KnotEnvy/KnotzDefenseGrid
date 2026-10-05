@@ -9,6 +9,7 @@ import { Grid, CELL } from './grid.js';
 import { RNG } from './rng.js';
 import { POSTS, SELL_REFUND, ARMOR_FLOOR, TIME_VULN, totalInvested } from './data/posts.js';
 import { ENEMIES } from './data/enemies.js';
+import { endlessWave } from './data/endless.js';
 
 export const SHARD_DROP_TIME = 4.5;
 export const SHARD_RETURN_SPEED = 130;
@@ -120,7 +121,16 @@ export class Sim {
   }
 
   get totalWaves() {
-    return this.level.waves.length;
+    return this.level.endless ? Infinity : this.level.waves.length;
+  }
+
+  _waveDef(i) {
+    return this.level.endless ? endlessWave(i, this.spawnIds.length) : this.level.waves[i];
+  }
+
+  /** Waves fully cleared so far (the score in endless mode). */
+  get wavesHeld() {
+    return this.waveStats.filter(w => w && w.cleared).length;
   }
 
   // ------------------------------------------------------------------ player actions
@@ -270,7 +280,7 @@ export class Sim {
   // ------------------------------------------------------------------ waves
   _startWave() {
     const idx = this.waveIndex;
-    const w = this.level.waves[idx];
+    const w = this._waveDef(idx);
     this.waveIndex++;
     const doors = this.spawnIds;
     let total = 0;
@@ -307,7 +317,7 @@ export class Sim {
     }
     if (this._spawning && !this.spawnQueue.length) {
       this._spawning = false;
-      const w = this.level.waves[this.waveIndex - 1];
+      const w = this._waveDef(this.waveIndex - 1);
       this.nextWaveIn = this.waveIndex < this.totalWaves ? (w.gap ?? this.level.waveGap ?? 16) : null;
     }
   }

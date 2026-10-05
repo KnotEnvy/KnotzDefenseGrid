@@ -42,7 +42,8 @@ export class World {
 
   buildRocks() {
     const { scene, grid } = this;
-    const ruins = this.level.id === 'cinder-road' || this.level.id === 'algul-siento';
+    const baseId = this.level.baseId ?? this.level.id;
+    const ruins = baseId === 'cinder-road' || baseId === 'algul-siento';
     this.rocks = [];
     const tints = [0xffffff, 0xf0e4d0, 0xd9c9b0, 0xe8d8c0, 0xc9b99f];
     const add = (x, y, size, rot) => {
@@ -144,14 +145,15 @@ export class World {
       const glow = scene.add.gradient({
         bands: [
           { start: 0, end: 0.45, colorStart: [0.05, 0, 0.08, 1], colorEnd: [0.35, 0.03, 0.28, 0.95], interpolation: 2 },
-          { start: 0.45, end: 1, colorStart: [0.35, 0.03, 0.28, 0.95], colorEnd: [0.85, 0.12, 0.3, 0], interpolation: 3 }
+          { start: 0.45, end: 0.85, colorStart: [0.35, 0.03, 0.28, 0.95], colorEnd: [0, 0, 0, 0], interpolation: 3 },
+          { start: 0.85, end: 1, colorStart: [0, 0, 0, 0], colorEnd: [0, 0, 0, 0] }
         ],
         shapeMode: 2, start: { x: 0.5, y: 0.5 }, shape: { x: 0.5, y: 0 }, dither: true
       }, c.x + 8, c.y, tall * 0.9, tall * 1.1).setDepth(DEPTH.postBase - 6);
       const ripple = scene.add.gradient({
         bands: [
-          { start: 0, end: 0.4, colorStart: [0.9, 0.2, 0.4, 0], colorEnd: [0.95, 0.3, 0.5, 0.55], interpolation: 2 },
-          { start: 0.4, end: 0.8, colorStart: [0.95, 0.3, 0.5, 0.55], colorEnd: [0.5, 0.1, 0.4, 0], interpolation: 2 }
+          { start: 0, end: 0.4, colorStart: [0, 0, 0, 0], colorEnd: [0.95, 0.3, 0.5, 0.55], interpolation: 2 },
+          { start: 0.4, end: 0.8, colorStart: [0.95, 0.3, 0.5, 0.55], colorEnd: [0, 0, 0, 0], interpolation: 2 }
         ],
         shapeMode: 2, repeatMode: 1, start: { x: 0.5, y: 0.5 }, shape: { x: 0.5, y: 0 }
       }, c.x + 8, c.y, tall * 1.4, tall * 1.4).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.postBase - 5);
@@ -186,7 +188,8 @@ export class World {
     this.beaconGlow = scene.add.gradient({
       bands: [
         { start: 0, end: 0.3, colorStart: [0.7, 1, 1, 0.55], colorEnd: [0.4, 0.9, 1, 0.35], interpolation: 2 },
-        { start: 0.3, end: 1, colorStart: [0.4, 0.9, 1, 0.35], colorEnd: [0.2, 0.6, 1, 0], interpolation: 3 }
+        { start: 0.3, end: 0.85, colorStart: [0.4, 0.9, 1, 0.35], colorEnd: [0, 0, 0, 0], interpolation: 3 },
+        { start: 0.85, end: 1, colorStart: [0, 0, 0, 0], colorEnd: [0, 0, 0, 0] }
       ],
       shapeMode: 2, start: { x: 0.5, y: 0.5 }, shape: { x: 0.5, y: 0 }, dither: true
     }, b.x, b.y, 220, 220).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.postBase - 8);

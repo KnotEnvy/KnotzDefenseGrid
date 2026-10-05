@@ -107,15 +107,15 @@ export function skyBackdrop(scene, { sky = [0x0b0719, 0x34193a, 0xd9703a], tower
       const ang = Math.atan2(150 - sy, towerX - sx);
       const b = scene.add.gradient({
         bands: [
-          { start: 0, end: 0.5, colorStart: [0.4, 0.8, 1, 0], colorEnd: [0.8, 0.95, 1, 0.55], interpolation: 2 },
-          { start: 0.5, end: 1, colorStart: [0.8, 0.95, 1, 0.55], colorEnd: [0.4, 0.8, 1, 0], interpolation: 2 }
+          { start: 0, end: 0.5, colorStart: [0, 0, 0, 0], colorEnd: [0.8, 0.95, 1, 0.55], interpolation: 2 },
+          { start: 0.5, end: 1, colorStart: [0.8, 0.95, 1, 0.55], colorEnd: [0, 0, 0, 0], interpolation: 2 }
         ],
         shapeMode: 0, repeatMode: 2, start: { x: 0, y: 0.5 }, shape: { x: 0.18, y: 0 }
       }, (sx + towerX) / 2, (sy + 150) / 2, len, 5).setBlendMode(Phaser.BlendModes.ADD).setRotation(ang).setDepth(2);
       beams.push(b);
       add(b);
       const halo = scene.add.gradient({
-        bands: [{ start: 0, end: 1, colorStart: [0.3, 0.7, 1, 0.0], colorEnd: [0.3, 0.7, 1, 0.0] }, { start: 0.5, end: 0.5, colorStart: [0.5, 0.85, 1, 0.12], colorEnd: [0.5, 0.85, 1, 0.12] }],
+        bands: [{ start: 0, end: 0.5, colorStart: [0, 0, 0, 0], colorEnd: [0.5, 0.85, 1, 0.12], interpolation: 2 }, { start: 0.5, end: 1, colorStart: [0.5, 0.85, 1, 0.12], colorEnd: [0, 0, 0, 0], interpolation: 2 }],
         shapeMode: 1, start: { x: 0.5, y: 0.5 }, shape: { x: 0, y: 0.5 }
       }, (sx + towerX) / 2, (sy + 150) / 2, len, 60).setBlendMode(Phaser.BlendModes.ADD).setRotation(ang).setDepth(2);
       add(halo);
@@ -144,7 +144,7 @@ export function skyBackdrop(scene, { sky = [0x0b0719, 0x34193a, 0xd9703a], tower
     const glow = scene.add.gradient({
       bands: [
         { start: 0, end: 0.2, colorStart: [1, 0.3, 0.2, 0.7], colorEnd: [0.8, 0.15, 0.2, 0.45] },
-        { start: 0.2, end: 1, colorStart: [0.8, 0.15, 0.2, 0.45], colorEnd: [0.4, 0.05, 0.2, 0], interpolation: 3 }
+        { start: 0.2, end: 1, colorStart: [0.8, 0.15, 0.2, 0.45], colorEnd: [0, 0, 0, 0], interpolation: 3 }
       ],
       shapeMode: 2, start: { x: 0.5, y: 0.5 }, shape: { x: 0.5, y: 0 }, dither: true
     }, tx, ty - towerH + 8, 520, 520).setBlendMode(Phaser.BlendModes.ADD).setDepth(3);

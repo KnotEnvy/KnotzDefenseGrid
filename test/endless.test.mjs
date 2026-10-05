@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { endlessWave } from '../src/sim/data/endless.js';
+import { endlessWave, makeEndlessLevel } from '../src/sim/data/endless.js';
+import { LEVELS } from '../src/sim/data/levels.js';
+import { Sim, FIXED_DT } from '../src/sim/sim.js';
 import { ENEMIES } from '../src/sim/data/enemies.js';
 
 test('endless waves are valid, deterministic and escalate', () => {
@@ -19,4 +21,20 @@ test('endless waves are valid, deterministic and escalate', () => {
   }
   assert.ok(endlessWave(9).groups.some(g => g.type === 'bear'), 'wave 10 brings the Bear');
   assert.ok(endlessWave(19).groups.some(g => g.type === 'ashe'), 'wave 20 brings Ashe');
+});
+
+test('an endless sim never "wins" and keeps producing waves', () => {
+  const lvl = makeEndlessLevel(LEVELS[2]);
+  const sim = new Sim(lvl, { seed: 3 });
+  assert.equal(sim.totalWaves, Infinity);
+  sim.nextWaveIn = 0.1;
+  let started = 0;
+  sim.on('waveStart', () => started++);
+  sim.silver = 99999;
+  for (let i = 0; i < 60 * 120 && sim.state === 'play'; i++) {
+    sim.update(FIXED_DT);
+    if (sim.enemies.length === 0 && sim.canCallWave) sim.callWave();
+  }
+  assert.ok(started >= 3, `started ${started} waves`);
+  assert.notEqual(sim.state, 'won');
 });

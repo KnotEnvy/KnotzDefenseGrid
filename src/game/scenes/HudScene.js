@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { POSTS, POST_ORDER, TARGET_MODE_LABEL } from '../../sim/data/posts.js';
-import { LEVEL_LORE, RUSK } from '../../sim/data/lore.js';
+import { LEVEL_LORE, RUSK, ENDLESS_LORE } from '../../sim/data/lore.js';
 import { ENEMIES } from '../../sim/data/enemies.js';
 import { getQuality, setQuality } from '../settings.js';
 import { GAME_W, GAME_H, FIELD, PANEL_X, FONT, COLOR, SC } from '../config.js';
@@ -39,7 +39,7 @@ export class HudScene extends Phaser.Scene {
 
     // Rusk's opening lines
     const lore = LEVEL_LORE[gs.level.id];
-    this.say(lore ? lore.tips[0] : 'Hold the Beam.', true);
+    this.say(gs.endless ? ENDLESS_LORE : lore ? lore.tips[0] : 'Hold the Beam.', true);
 
     const onSay = cat => this.sayCategory(cat);
     const onWave = ({ index, wave }) => this.showBanner(index, wave);
@@ -48,7 +48,9 @@ export class HudScene extends Phaser.Scene {
     const onSpawn = ({ enemy }) => {
       if (this.seen.has(enemy.type)) return;
       this.seen.add(enemy.type);
-      this.intelQueue.push(ENEMIES[enemy.type]);
+      // bosses jump the queue
+      if (enemy.boss) this.intelQueue.unshift(ENEMIES[enemy.type]);
+      else this.intelQueue.push(ENEMIES[enemy.type]);
     };
     this.sim.on('spawn', onSpawn);
     gs.events.on('say', onSay);
@@ -290,7 +292,7 @@ export class HudScene extends Phaser.Scene {
     const gs = this.gs;
     gs.tweens.timeScale = 1;
     this.scene.stop('Hud');
-    gs.scene.restart({ level: gs.levelIndex, difficulty: gs.difficulty });
+    gs.scene.restart({ level: gs.levelIndex, difficulty: gs.difficulty, endless: gs.endless });
   }
 
   quit() {
@@ -308,7 +310,7 @@ export class HudScene extends Phaser.Scene {
     const levelCfg = sim.level.interest ?? {};
 
     // top bar
-    setText(this.waveText, `WAVE ${Math.min(sim.waveIndex, sim.totalWaves)} / ${sim.totalWaves}`);
+    setText(this.waveText, isFinite(sim.totalWaves) ? `WAVE ${Math.min(sim.waveIndex, sim.totalWaves)} / ${sim.totalWaves}` : `WAVE ${sim.waveIndex}  ·  held ${sim.wavesHeld}`);
     if (sim.nextWaveIn !== null && sim.waveIndex < sim.totalWaves) setText(this.timerText, `next in ${Math.ceil(sim.nextWaveIn)}s`);
     else setText(this.timerText, sim.waveIndex >= sim.totalWaves ? 'final wave unleashed' : 'in progress');
     this.callBtn.setEnabled(sim.canCallWave);
