@@ -335,7 +335,8 @@ export class HudScene extends Phaser.Scene {
       const cost = POSTS[pb.type].levels[0].cost;
       const afford = sim.silver >= cost;
       pb.b.setEnabled(afford || gs.buildType === pb.type);
-      pb.cost.setColor(afford ? '#e8eef6' : '#a05050');
+      const costCol = afford ? '#e8eef6' : '#a05050';
+      if (pb.costCol !== costCol) pb.cost.setColor((pb.costCol = costCol)); // setColor redraws + re-uploads the Text
       pb.icon.setAlpha(afford ? 1 : 0.5);
       pb.head.setAlpha(afford ? 1 : 0.5);
       const active = gs.buildType === pb.type;

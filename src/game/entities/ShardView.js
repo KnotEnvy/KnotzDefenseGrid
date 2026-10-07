@@ -42,7 +42,7 @@ export class ShardView {
       glowSize = 46 + 6 * Math.sin(t * 9);
       glowA = 0.8;
       const k = (t * 1.6) % 1;
-      this.ring.setVisible(true).setDisplaySize(24 + k * 46, 24 + k * 46).setAlpha((1 - k) * 0.9);
+      this.ring.setVisible(true).setTint(0xff4a5a).setDisplaySize(24 + k * 46, 24 + k * 46).setAlpha((1 - k) * 0.9);
       y -= 5;
     } else if (s.state === 'dropped') {
       scale = 0.6 + 0.06 * Math.sin(t * 14);

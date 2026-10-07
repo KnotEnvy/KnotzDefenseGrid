@@ -396,7 +396,8 @@ export class Sfx {
     }
     if (volume > 0.001) {
       if (!s.isPlaying) s.play();
-      s.setVolume(volume * this.sfxVol);
+      const v = volume * this.sfxVol;
+      if (s._v !== v) s.setVolume((s._v = v)); // called every frame; setVolume schedules a gain change each time
     } else if (s.isPlaying) s.pause();
   }
 

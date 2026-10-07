@@ -46,6 +46,7 @@ export class GameScene extends Phaser.Scene {
     this.buildType = null;
     this.selected = null;
     this.ghost = null;
+    this.ghostKey = null;
     this.hoverCell = { cx: -9, cy: -9 };
     this.lastReason = null;
     this.postViews = new Map();
@@ -276,6 +277,7 @@ export class GameScene extends Phaser.Scene {
     this.paused = !this.paused;
     this.events.emit('paused', this.paused);
     this.tweens.timeScale = this.paused ? 0 : 1;
+    this.fx.setPaused(this.paused);
   }
 
   togglePaths() {
@@ -332,7 +334,7 @@ export class GameScene extends Phaser.Scene {
     for (const v of this.enemyViews.values()) v.update(dt, time);
     for (const v of this.postViews.values()) v.update(dt, time);
     for (const v of this.shardViews) v.update(dt, time);
-    this.fx.update(dt, time);
+    if (!this.paused) this.fx.update(dt, time); // paused: beams/bolts stay drawn as they were, nothing new spawns
     this.world.update(time, delta);
     if (this.world.pathVisible) this.world.drawPaths(time / 1000);
     this.drawHealthBars();
@@ -380,7 +382,14 @@ export class GameScene extends Phaser.Scene {
     if (this.buildType && this.hoverCell.cx > -5) {
       const { cx, cy } = this.hoverCell;
       const type = this.buildType;
-      const chk = sim.canBuild(type, cx, cy);
+      // canBuild floods the whole grid to test the path; redo it when the cell changes, else ~10x/s for walkers
+      const ck = `${type}:${cx}:${cy}`;
+      if (ck !== this.ghostKey || time - this.ghostT > 100) {
+        this.ghostKey = ck;
+        this.ghostT = time;
+        this.ghostChk = sim.canBuild(type, cx, cy);
+      }
+      const chk = this.ghostChk;
       const x = (cx + 1) * CELL;
       const y = (cy + 1) * CELL;
       const col = chk.ok ? 0x7ddc8a : 0xe05050;

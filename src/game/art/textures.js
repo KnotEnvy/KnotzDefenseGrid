@@ -100,11 +100,13 @@ export function makeFxTextures(scene) {
 
 /** Paint + register a level's terrain with its normal map. Returns the texture key. */
 export function makeTerrainTexture(scene, level) {
-  const key = `terrain_${level.id}`;
-  if (scene.textures.exists(key)) return { key, rockCells: scene.registry.get(`rocks_${level.id}`) };
+  // endless reuses its campaign level's map, palette and number, so it reuses the painted terrain too
+  const id = level.baseId ?? level.id;
+  const key = `terrain_${id}`;
+  if (scene.textures.exists(key)) return { key, rockCells: scene.registry.get(`rocks_${id}`) };
   const { albedo, normal, rockCells } = paintTerrain(level, level.number * 17 + 3);
   const tex = scene.textures.addCanvas(key, albedo);
   tex.setDataSource(normal);
-  scene.registry.set(`rocks_${level.id}`, rockCells);
+  scene.registry.set(`rocks_${id}`, rockCells);
   return { key, rockCells };
 }
