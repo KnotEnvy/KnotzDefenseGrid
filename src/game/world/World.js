@@ -7,8 +7,8 @@
 //   * Grid shape: the build-grid overlay
 
 import Phaser from 'phaser';
-import { Grid, K, COLS, ROWS, CELL } from '../../sim/grid.js';
-import { DEPTH, SC, FIELD, TEX_SCALE } from '../config.js';
+import { K, COLS, ROWS, CELL } from '../../sim/grid.js';
+import { DEPTH, FIELD, TEX_SCALE } from '../config.js';
 import { makeTerrainTexture } from '../art/textures.js';
 import { rockRects } from '../art/terrain.js';
 import { isLow } from '../settings.js';

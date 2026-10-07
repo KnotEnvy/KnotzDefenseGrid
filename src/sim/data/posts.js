@@ -123,10 +123,6 @@ export const ARMOR_FLOOR = 0.25;
 
 export const TIME_VULN = 1.25; // damage multiplier on enemies frozen by the Glass
 
-export function buildCost(post) {
-  return post.levels[0].cost;
-}
-
 export function totalInvested(post, level) {
   let sum = 0;
   for (let i = 0; i <= level; i++) sum += post.levels[i].cost;

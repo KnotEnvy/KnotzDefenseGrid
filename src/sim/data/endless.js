@@ -1,8 +1,6 @@
 // "The Wheel Turns": endless mode. Waves are generated from a threat budget that grows every wave; bosses return
 // every tenth wave. Deterministic (no RNG) so a given wave is always the same.
 
-import { ENEMIES } from './enemies.js';
-
 // Threat cost of one of each enemy (roughly proportional to how hard it is to put down).
 const COST = { cantoi: 1, hound: 0.8, swarm: 0.3, crow: 1.2, lowman: 3, breaker: 3, brute: 7 };
 
@@ -70,5 +68,3 @@ export function makeEndlessLevel(base) {
     waves: []
   };
 }
-
-export const ENDLESS_ENEMY_IDS = Object.keys(COST).filter(k => ENEMIES[k]);
