@@ -50,6 +50,30 @@ async function main() {
   await shot('02-map');
   check(await page.evaluate("window.__beam.game.scene.getScene('Select').nodes.length") === 5, 'map shows 5 Waystations');
 
+  // ------------------------------------------------------------------ first journey: prologue -> map -> briefing -> level
+  // The Story scene runs twice in a row here (prologue, then the level briefing); Phaser reuses the scene instance,
+  // so state left over from the first run must not block the second. Driven with real clicks.
+  log('first journey (prologue -> map -> briefing -> level)');
+  await page.goto(`${base}/?fx=low`);
+  await settle('Menu');
+  await page.evaluate("window.__beam.game.scene.getScene('Menu').go('Story', { title: 'The Keeping', prologue: true })");
+  await settle('Story');
+  const storyDone = "(s => s.leaving && s.idx === s.slides.length - 1)(window.__beam.game.scene.getScene('Story'))";
+  const clickThroughStory = async () => {
+    for (let i = 0; i < 60 && !(await page.evaluate(storyDone)); i++) {
+      await page.mouse.click(640, 300);
+      await page.waitForTimeout(150);
+    }
+    return page.evaluate(storyDone);
+  };
+  check(await clickThroughStory(), 'clicking through the prologue finishes it');
+  await settle('Select');
+  await page.evaluate("(s => { s.sel = 0; s.endless = false; s.start(); })(window.__beam.game.scene.getScene('Select'))");
+  await settle('Story');
+  check(await clickThroughStory(), 'clicking through the level briefing after the prologue finishes it');
+  await gameReady();
+  check(await page.evaluate("window.__beam.game.scene.isActive('Game')"), 'the briefing leads into the level');
+
   // ------------------------------------------------------------------ every level loads and fights
   const bot = () => loadBot(page);
   for (let lv = 1; lv <= 5; lv++) {
