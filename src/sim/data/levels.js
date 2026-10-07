@@ -177,5 +177,3 @@ export const LEVELS = [
     ]
   }
 ];
-
-export const LEVEL_BY_ID = Object.fromEntries(LEVELS.map(l => [l.id, l]));

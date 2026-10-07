@@ -1,39 +1,21 @@
 // End-to-end smoke test in real Chromium (WebGL via SwiftShader if there is no GPU).
 //
 //   npm run e2e                       # starts its own Vite dev server if none is running
-//   E2E_URL=http://127.0.0.1:5173 npm run e2e
+//   BASE_URL=http://127.0.0.1:5173 npm run e2e
 //
 // It walks the real flow (menu -> map -> level -> win -> results), loads every level with the heuristic bot,
 // fires both boss encounters, saves screenshots to test/e2e-out/, and FAILS on any console error / page error.
+// Don't edit src/ while it runs: Vite's hot reload restarts the page underneath the test.
+// Chromium discovery, GL flags and the dev server live in tools/lib.mjs (CHROME_PATH, GL=hardware, BASE_URL).
 
-import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { launch, startServer, watchErrors, settle as settleScene, loadBot } from '../tools/lib.mjs';
 
 const OUT = path.resolve('test/e2e-out');
 fs.mkdirSync(OUT, { recursive: true });
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-let base = process.env.E2E_URL || 'http://127.0.0.1:5199';
+let base;
 let server = null;
-
-const up = async url => {
-  try {
-    return (await fetch(url)).ok;
-  } catch {
-    return false;
-  }
-};
-
-async function ensureServer() {
-  if (await up(base)) return;
-  server = spawn('npx', ['vite', '--port', '5199', '--host', '127.0.0.1', '--strictPort'], { stdio: 'ignore' });
-  for (let i = 0; i < 60; i++) {
-    if (await up(base)) return;
-    await new Promise(r => setTimeout(r, 500));
-  }
-  throw new Error('could not start vite');
-}
 
 const errors = [];
 const log = (...a) => console.log(...a);
@@ -47,29 +29,14 @@ const check = (cond, msg) => {
 };
 
 async function main() {
-  await ensureServer();
-  const browser = await chromium.launch({
-    executablePath: CHROME,
-    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required']
-  });
+  server = await startServer();
+  base = server.base;
+  const browser = await launch();
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await ctx.newPage();
-  page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
-  page.on('console', m => {
-    if (m.type() !== 'error') return;
-    const t = m.text();
-    if (/404|favicon|willReadFrequently/.test(t)) return;
-    errors.push(`console.error: ${t}`);
-  });
+  watchErrors(page, errors);
 
-  const settle = async key => {
-    await page.waitForFunction(k => window.__beam?.game.scene.isActive(k), key, { timeout: 180000 });
-    await page.waitForFunction(k => {
-      const s = window.__beam.game.scene.getScene(k);
-      return s.cameras?.main && !s.cameras.main.fadeEffect.isRunning;
-    }, key, { timeout: 180000 });
-    await page.waitForTimeout(800);
-  };
+  const settle = key => settleScene(page, key);
   const shot = name => page.screenshot({ path: path.join(OUT, `${name}.png`) });
   const gameReady = () => page.waitForFunction(() => window.__beam?.scene?.sim && window.__beam.game.scene.isActive('Game'), null, { timeout: 180000 });
 
@@ -84,13 +51,13 @@ async function main() {
   check(await page.evaluate("window.__beam.game.scene.getScene('Select').nodes.length") === 5, 'map shows 5 Waystations');
 
   // ------------------------------------------------------------------ every level loads and fights
-  const bot = `import('/test/bot.mjs').then(m => { window.__Bot = m.Bot; })`;
+  const bot = () => loadBot(page);
   for (let lv = 1; lv <= 5; lv++) {
     log(`level ${lv}`);
     await page.goto(`${base}/?fx=low&level=${lv}`);
     await gameReady();
     await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
-    await page.evaluate(bot);
+    await bot();
     const info = await page.evaluate(async () => {
       const s = window.__beam.scene;
       const sim = s.sim;
@@ -114,7 +81,7 @@ async function main() {
     await page.goto(`${base}/?fx=low&level=${lv}&all`);
     await gameReady();
     await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
-    await page.evaluate(bot);
+    await bot();
     const r = await page.evaluate(async b => {
       const s = window.__beam.scene;
       const sim = s.sim;
@@ -140,7 +107,7 @@ async function main() {
   await page.goto(`${base}/?fx=low&level=1`);
   await gameReady();
   await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
-  await page.evaluate(bot);
+  await bot();
   const win = await page.evaluate(async () => {
     const s = window.__beam.scene;
     const sim = s.sim;
@@ -210,7 +177,7 @@ async function main() {
   await page.goto(`${base}/?fx=low&level=3&endless`);
   await gameReady();
   await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
-  await page.evaluate(bot);
+  await bot();
   const en = await page.evaluate(async () => {
     const s = window.__beam.scene;
     const sim = s.sim;
@@ -244,6 +211,6 @@ main()
     failed = true;
   })
   .finally(() => {
-    server?.kill();
+    server?.stop();
     process.exit(failed ? 1 : 0);
   });

@@ -3,7 +3,7 @@ import { GAME_W as W, GAME_H as H, FONT } from '../config.js';
 import { PROLOGUE, PROLOGUE_FINAL } from '../../sim/data/lore.js';
 import { skyBackdrop } from '../ui/backdrop.js';
 import { installBasicFx } from '../fx/PostFx.js';
-import { button, panel, txt, STYLE } from '../ui/kit.js';
+import { button, panel, txt } from '../ui/kit.js';
 import { typewriter } from '../ui/flow.js';
 
 /** Typewriter story slides: the prologue (why gunslingers exist), level briefings and epilogues. */

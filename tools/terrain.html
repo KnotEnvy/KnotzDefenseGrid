@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- Terrain preview: the procedural albedo and normal map for a level, exactly as the game paints them.
+     npm run dev, then open http://localhost:5173/tools/terrain.html?l=0   (l = level index 0..4)
+     Edit src/game/art/terrain.js and refresh. Console shows how long painting took. -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Terrain preview</title>
+  </head>
+  <body style="margin: 0; background: #222; color: #ccc; font: 12px monospace">
+    <div id="out" style="display: flex; flex-wrap: wrap"></div>
+    <script type="module">
+      import { paintTerrain } from '/src/game/art/terrain.js';
+      import { LEVELS } from '/src/sim/data/levels.js';
+      const idx = Number(new URLSearchParams(location.search).get('l') || 0);
+      const level = LEVELS[idx];
+      const t0 = performance.now();
+      const { albedo, normal } = paintTerrain(level, level.number * 17 + 3); // same seed the game uses
+      console.log(`${level.id}: painted in ${Math.round(performance.now() - t0)} ms`);
+      for (const c of [albedo, normal]) c.style.cssText = 'width:640px;display:block';
+      document.getElementById('out').append(albedo, normal);
+      window.__ready = true;
+    </script>
+  </body>
+</html>

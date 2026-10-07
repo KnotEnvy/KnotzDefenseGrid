@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_W as W, GAME_H as H, FONT, COLOR } from '../config.js';
+import { GAME_W as W, GAME_H as H, FONT } from '../config.js';
 import { TITLE, SUBTITLE, TAGLINE, CREDITS } from '../../sim/data/lore.js';
 import { skyBackdrop } from '../ui/backdrop.js';
 import { installBasicFx } from '../fx/PostFx.js';

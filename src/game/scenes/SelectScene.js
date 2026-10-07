@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
-import { GAME_W as W, GAME_H as H, FONT, SC } from '../config.js';
+import { GAME_W as W, FONT, SC } from '../config.js';
 import { LEVELS } from '../../sim/data/levels.js';
-import { POSTS, POST_ORDER } from '../../sim/data/posts.js';
+import { POST_ORDER } from '../../sim/data/posts.js';
 import { DIFFICULTY, DIFFICULTY_ORDER } from '../../sim/data/difficulty.js';
 import { skyBackdrop } from '../ui/backdrop.js';
 import { installBasicFx } from '../fx/PostFx.js';
-import { button, panel, txt, setText, STYLE } from '../ui/kit.js';
+import { button, panel, txt, setText } from '../ui/kit.js';
 import { startLevelFlow } from '../ui/flow.js';
 
 const NODES = [[150, 330], [380, 262], [610, 340], [840, 262], [1050, 330]];
@@ -91,8 +91,8 @@ export class SelectScene extends Phaser.Scene {
       if (done) g.lineStyle(2, 0x8ff3ff, 0.8).strokeCircle(x, y, 33);
     };
     draw();
-    const label = txt(this, x, y, `${lv.number}`, { fontFamily: FONT.title, fontSize: 28, color: unlocked ? '#f1d9a0' : '#4a3a2a' }).setOrigin(0.5).setDepth(21);
-    const name = txt(this, x, y + 46, lv.name, { fontFamily: FONT.body, fontSize: 17, color: unlocked ? '#e8dcc0' : '#5a4a3a', align: 'center', wordWrap: { width: 190 } }).setOrigin(0.5, 0).setDepth(21);
+    txt(this, x, y, `${lv.number}`, { fontFamily: FONT.title, fontSize: 28, color: unlocked ? '#f1d9a0' : '#4a3a2a' }).setOrigin(0.5).setDepth(21);
+    txt(this, x, y + 46, lv.name, { fontFamily: FONT.body, fontSize: 17, color: unlocked ? '#e8dcc0' : '#5a4a3a', align: 'center', wordWrap: { width: 190 } }).setOrigin(0.5, 0).setDepth(21);
     const stars = this.add.graphics().setDepth(21);
     const st = this.prog[lv.id]?.stars ?? 0;
     for (let s = 0; s < 3; s++) starPoly(stars, x - 22 + s * 22, y - 44, 9, 4, s < st ? 0xffd77a : 0x2a2018, 1);

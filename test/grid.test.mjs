@@ -65,7 +65,6 @@ test('placing a post lengthens the route and removing it restores it', () => {
 });
 
 test('enemy cells that would be sealed in veto the placement', () => {
-  const g = new Grid(corridor());
   // Pretend an enemy stands inside the corridor east of where we try to build; sealing is already
   // rejected by the doorway check, so use a pocket instead.
   const pocket = buildMap([
