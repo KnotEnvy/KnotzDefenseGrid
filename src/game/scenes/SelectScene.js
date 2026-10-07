@@ -6,7 +6,7 @@ import { DIFFICULTY, DIFFICULTY_ORDER } from '../../sim/data/difficulty.js';
 import { skyBackdrop } from '../ui/backdrop.js';
 import { installBasicFx } from '../fx/PostFx.js';
 import { button, panel, txt, setText } from '../ui/kit.js';
-import { startLevelFlow } from '../ui/flow.js';
+import { startLevelFlow, leaveTo } from '../ui/flow.js';
 
 const NODES = [[150, 330], [380, 262], [610, 340], [840, 262], [1050, 330]];
 
@@ -195,8 +195,7 @@ export class SelectScene extends Phaser.Scene {
   }
 
   leave(scene) {
-    this.cameras.main.fadeOut(500, 7, 5, 10);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(scene));
+    leaveTo(this, scene);
   }
 
   update(time, delta) {

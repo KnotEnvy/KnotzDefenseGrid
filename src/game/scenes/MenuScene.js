@@ -6,6 +6,7 @@ import { installBasicFx } from '../fx/PostFx.js';
 import { button, panel, txt, STYLE } from '../ui/kit.js';
 import { loadProgress } from './BootScene.js';
 import { getQuality, setQuality } from '../settings.js';
+import { leaveTo } from '../ui/flow.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -32,7 +33,7 @@ export class MenuScene extends Phaser.Scene {
     this.tweens.add({ targets: tag, alpha: { from: 0.55, to: 1 }, duration: 1800, yoyo: true, repeat: -1 });
 
     // --- buttons
-    const prog = loadProgress();
+    const prog = this.registry.get('progress') ?? loadProgress();
     const started = Object.keys(prog).length > 0;
     const bx = 76;
     let by = 262;
@@ -140,8 +141,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   go(scene, data) {
-    this.cameras.main.fadeOut(600, 7, 5, 10);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(scene, data));
+    leaveTo(this, scene, data, 600);
   }
 
   update(time, delta) {

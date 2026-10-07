@@ -68,11 +68,26 @@ async function main() {
   };
   check(await clickThroughStory(), 'clicking through the prologue finishes it');
   await settle('Select');
-  await page.evaluate("(s => { s.sel = 0; s.endless = false; s.start(); })(window.__beam.game.scene.getScene('Select'))");
+  const active = () => page.evaluate(() => window.__beam.game.scene.getScenes(true).map(s => s.sys.settings.key).join(','));
+  // "Ride out" then "Menu" inside the same fade: only the first transition may happen
+  await page.evaluate("(s => { s.sel = 0; s.endless = false; s.start(); s.leave('Menu'); })(window.__beam.game.scene.getScene('Select'))");
   await settle('Story');
+  check((await active()) === 'Story', `a second click during the fade is ignored (active: ${await active()})`);
   check(await clickThroughStory(), 'clicking through the level briefing after the prologue finishes it');
   await gameReady();
-  check(await page.evaluate("window.__beam.game.scene.isActive('Game')"), 'the briefing leads into the level');
+  check((await active()) === 'Game,Hud', `the briefing leads into the level (active: ${await active()})`);
+  await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
+  // Phaser handles queued key events on the next frame, which can be a second away under software GL
+  const frames = async n => { const f0 = await page.evaluate(() => window.__beam.game.loop.frame); await page.waitForFunction(f => window.__beam.game.loop.frame >= f, f0 + n, { timeout: 60000 }); };
+  await page.keyboard.press('p');
+  await frames(2);
+  const wave0 = await page.evaluate(() => window.__beam.scene.sim.waveIndex);
+  await page.keyboard.press(' ');
+  await frames(2);
+  check(await page.evaluate(w => window.__beam.scene.paused && window.__beam.scene.sim.waveIndex === w, wave0), 'Space does not call a wave while paused');
+  await page.keyboard.press('Escape');
+  await frames(2);
+  check(await page.evaluate(() => !window.__beam.scene.paused), 'Escape resumes from pause');
 
   // ------------------------------------------------------------------ every level loads and fights
   const bot = () => loadBot(page);

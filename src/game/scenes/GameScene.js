@@ -197,11 +197,13 @@ export class GameScene extends Phaser.Scene {
   onKey(ev) {
     const k = ev.key;
     if (k === 'Escape') {
-      if (this.buildType || this.selected) this.cancel();
-      else this.togglePause();
+      if (this.paused || !(this.buildType || this.selected)) this.togglePause();
+      else this.cancel();
       return;
     }
     if (this.ended) return;
+    // under the pause menu only unpause and mute work (Space would call a wave, S/U would sell/upgrade)
+    if (this.paused && !'pPmM'.includes(k)) return;
     if (k === ' ') {
       ev.preventDefault?.();
       this.callWave();
@@ -292,14 +294,14 @@ export class GameScene extends Phaser.Scene {
     this.sfx?.play(won ? 'win' : 'lose', { volume: 0.9 });
     const result = { endless: this.endless, wavesHeld: sim.wavesHeld, won, stars, level: this.levelIndex, difficulty: this.difficulty, shards: sim.shardsRemaining, total: sim.level.shards, kills: sim.stats.kills, time: Math.round(sim.time), recovered: sim.stats.shardsRecovered, lost: sim.stats.shardsLost };
     if (this.endless) {
-      const prog = loadProgress();
+      const prog = sessionProgress(this);
       const key = this.level.id;
       prog[key] = { best: Math.max(prog[key]?.best ?? 0, sim.wavesHeld) };
       saveProgress(prog);
       this.registry.set('progress', prog);
       result.best = prog[key].best;
     } else if (won) {
-      const prog = loadProgress();
+      const prog = sessionProgress(this);
       const key = this.level.id;
       const best = prog[key]?.stars ?? 0;
       prog[key] = { stars: Math.max(best, stars), done: true };
@@ -430,4 +432,10 @@ export class GameScene extends Phaser.Scene {
     this.tweens.timeScale = 1;
     this.input.keyboard?.removeAllListeners();
   }
+}
+
+// Progress lives in the registry for the session and is mirrored to localStorage. Reading storage back would lose
+// earlier wins this session whenever storage is blocked (some private modes), relocking levels already beaten.
+function sessionProgress(scene) {
+  return { ...(scene.registry.get('progress') ?? loadProgress()) };
 }
