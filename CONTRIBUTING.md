@@ -32,7 +32,8 @@ something new, add an event to the sim rather than reaching into it.
 
 ## Checks
 
-Run these before opening a PR (there is no CI yet, so you are the CI):
+CI runs `npm test` and `npm run build` on every PR (and deploys `main` to GitHub Pages). It does **not** run the browser e2e or the
+bot, so run those yourself when they apply:
 
 | Command | What it proves | When |
 |---|---|---|

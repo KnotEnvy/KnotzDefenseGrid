@@ -37,6 +37,9 @@ npm run build      # production bundle in dist/
 npm run preview
 ```
 
+Every push to `main` is tested, built and deployed to GitHub Pages by `.github/workflows/pages.yml`
+(live at <https://knotenvy.github.io/KnotzDefenseGrid/> once the first deploy finishes).
+
 Needs a browser with **WebGL** (any current desktop browser). There are **no binary assets**: sprites are SVG,
 terrain is painted at boot, and every sound and the music are synthesised.
 
