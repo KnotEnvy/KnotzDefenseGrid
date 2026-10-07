@@ -20,6 +20,9 @@ reasoning behind every mechanic.*
   <img src="docs/img/menu.jpg" alt="Title screen" width="425"> <img src="docs/img/map.jpg" alt="The Path of the Beam" width="425">
 </p>
 
+**Working on this?** [`CONTRIBUTING.md`](CONTRIBUTING.md) has the setup, checks and conventions;
+[`docs/GFX_GUIDE.md`](docs/GFX_GUIDE.md) is the guide for adding art, details and effects.
+
 ---
 
 ## Play
@@ -50,7 +53,8 @@ terrain is painted at boot, and every sound and the music are synthesised.
 | **M** | Mute |
 
 URL switches for testing: `?level=3` (jump to a level), `?all` (all posts unlocked), `?unlock` (all levels open),
-`?silver=2000`, `?fx=low|high`.
+`?silver=2000`, `?wave=1` (seconds to the first wave), `?fx=low|high`, `?endless`, `?diff=easy|normal|hard`, and for lighting
+work `?amb=ffffff` (ambient colour) and `?sun=0..2` (sun intensity).
 
 ### How it plays (Defense Grid DNA)
 
@@ -128,9 +132,12 @@ src/
     ui/           HUD kit, backdrop, flow helpers
   main.js
 test/
-  grid.test.mjs, sim.test.mjs   node:test unit tests
+  *.test.mjs                     node:test unit tests
   bot.mjs                        headless heuristic player (balance tuning)
   e2e.mjs                        Playwright end-to-end smoke test
+tools/                           GFX dev tools: sprite sheet, review screenshots, perf probe, terrain preview, shared lib
+docs/                            DESIGN.md (story bible + mechanics), GFX_GUIDE.md, README screenshots
+old/                             the archived first prototype (Python/Pygame), reference only
 ```
 
 The simulation is a fixed-step state machine; the Phaser layer reads its state each frame and reacts to its events

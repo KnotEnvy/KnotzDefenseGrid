@@ -1,7 +1,9 @@
 node_modules/
 dist/
-spike/
+.vite/
 *.log
 .DS_Store
-.vite/
+tools/out/
 test/e2e-out/
+__pycache__/
+*.pyc
