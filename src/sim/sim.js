@@ -350,7 +350,6 @@ export class Sim {
 
   // ------------------------------------------------------------------ enemies
   _auras(dt) {
-    for (const e of this.enemies) e.slow = 1;
     // Breaker regen auras.
     for (const b of this.enemies) {
       const a = b.def.aura;
@@ -446,10 +445,12 @@ export class Sim {
       return;
     }
     const move = Math.min(d, spd * dt);
-    e.x += ((tx - e.x) / d) * move;
-    e.y += ((ty - e.y) / d) * move;
-    e.vx = ((tx - e.x) / d) * spd;
-    e.vy = ((ty - e.y) / d) * spd;
+    const ux = (tx - e.x) / d;
+    const uy = (ty - e.y) / d;
+    e.x += ux * move;
+    e.y += uy * move;
+    e.vx = ux * spd; // direction from before the step: after it, (tx - e.x) / d is shorter than a unit vector
+    e.vy = uy * spd;
   }
 
   _tryPickAtBase(e) {
@@ -574,7 +575,10 @@ export class Sim {
       if (e.summonCd <= 0) {
         e.summonCd = d.summon.every;
         for (let k = 0; k < d.summon.count; k++) {
-          this.spawnEnemy(d.summon.type, e.spawnId, 1, e.wave, { x: e.x + this.rng.range(-10, 10), y: e.y + this.rng.range(-10, 10) });
+          let at = { x: e.x + this.rng.range(-10, 10), y: e.y + this.rng.range(-10, 10) };
+          // the boss walks within a few px of rock: a summon dropped inside it could never move, and the wave never clears
+          if (!this._reachable(at.x, at.y)) at = { x: e.x, y: e.y };
+          this.spawnEnemy(d.summon.type, e.spawnId, 1, e.wave, at);
         }
         this.emit('summon', { enemy: e });
       }
@@ -672,6 +676,9 @@ export class Sim {
   }
 
   _updatePosts(dt) {
+    // Slow auras set e.slow below and enemies move with it next tick. Resetting it any earlier in the tick (it used
+    // to happen in _auras, before movement) wiped every Sigul Ward slow before it took effect.
+    for (const e of this.enemies) e.slow = 1;
     for (const p of this.posts) {
       if (p.disabled > this.time) {
         p.beam = [];
@@ -746,12 +753,16 @@ export class Sim {
     }
   }
 
+  /** Walkable AND connected to the Waystation (a walkable pocket reachable only diagonally is not). */
+  _reachable(x, y) {
+    return this.grid.baseDistAt(x, y) < Infinity;
+  }
+
   _knock(e, p, amt) {
     const d = dist(p.x, p.y, e.x, e.y) || 1;
     const nx = e.x + ((e.x - p.x) / d) * amt;
     const ny = e.y + ((e.y - p.y) / d) * amt;
-    const c = this.grid.cellOf(nx, ny);
-    if (this.grid.isWalkable(c.cx, c.cy)) {
+    if (this._reachable(nx, ny)) {
       e.x = nx;
       e.y = ny;
     }

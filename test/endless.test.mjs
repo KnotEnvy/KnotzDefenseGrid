@@ -38,3 +38,10 @@ test('an endless sim never "wins" and keeps producing waves', () => {
   assert.ok(started >= 3, `started ${started} waves`);
   assert.notEqual(sim.state, 'won');
 });
+
+test('endless waves mix enemy types once there are enough to mix', () => {
+  for (let i = 3; i < 40; i++) {
+    const types = new Set(endlessWave(i, 1).groups.map(g => g.type));
+    assert.ok(types.size >= 3, `wave ${i + 1} has only ${[...types].join(', ')}`);
+  }
+});

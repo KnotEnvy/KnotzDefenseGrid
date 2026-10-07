@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Sim, FIXED_DT, SHARD_DROP_TIME } from '../src/sim/sim.js';
 import { LEVELS } from '../src/sim/data/levels.js';
 import { POSTS } from '../src/sim/data/posts.js';
+import { COLS, ROWS, CELL } from '../src/sim/grid.js';
 
 const run = (sim, seconds) => {
   const n = Math.round(seconds / FIXED_DT);
@@ -188,4 +189,50 @@ test('the final boss hexes posts and summons Can-toi', () => {
   run(sim, 20);
   assert.ok(hexes.length >= 1, 'hexed');
   assert.ok(summons.length >= 2, 'summoned');
+});
+
+test('a Sigul Ward slows enemies inside its glow', () => {
+  const sim = quiet(0, { unlocked: ['sixgun', 'sigul'] });
+  sim.silver = 99999;
+  const ward = sim.build('sigul', 12, 8);
+  assert.ok(ward);
+  const { radius, slow } = POSTS.sigul.levels[0];
+  const e = sim.spawnEnemy('cantoi', [...sim.grid.spawnCells.keys()][0], 1000);
+  const ratios = [];
+  const deep = () => Math.hypot(ward.x - e.x, ward.y - e.y) < radius - 10; // well inside, so a tick never straddles the edge
+  for (let i = 0; i < 60 * 60 && !e.dead && e.state !== 'loiter'; i++) {
+    const [x, y, wasDeep] = [e.x, e.y, deep()];
+    sim.update(FIXED_DT);
+    const moved = Math.hypot(e.x - x, e.y - y);
+    if (wasDeep && deep() && moved > 0) ratios.push(moved / (e.speed * FIXED_DT));
+  }
+  assert.ok(ratios.length > 30, `the Can-toi walked through the glow (${ratios.length} ticks)`);
+  const avg = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+  assert.ok(Math.abs(avg - (1 - slow)) < 0.05, `moves at ${avg.toFixed(2)}x inside the glow, expected ${1 - slow}`);
+});
+
+test('summons never appear inside rock, even when the boss hugs it', () => {
+  const sim = quiet(4);
+  const g = sim.grid;
+  const spawnId = [...g.spawnCells.keys()][0];
+  // every reachable cell that has rock directly to its right: park the boss 2 px from that rock
+  const spots = [];
+  for (let cy = 0; cy < ROWS; cy++)
+    for (let cx = 0; cx < COLS - 1; cx++)
+      if ( g.toBase[g.idx(cx, cy)] < Infinity && !g.isWalkable(cx + 1, cy)) spots.push({ cx, cy });
+  assert.ok(spots.length > 0);
+  const summoned = [];
+  sim.on('spawn', ({ enemy }) => enemy.type === 'cantoi' && summoned.push(enemy));
+  for (const { cx, cy } of spots.slice(0, 20)) {
+    const boss = sim.spawnEnemy('ashe', spawnId, 1, 0, { x: (cx + 1) * CELL - 2, y: (cy + 0.5) * CELL });
+    boss.stunUntil = Infinity;
+    for (let k = 0; k < 5; k++) {
+      boss.summonCd = 0;
+      sim.update(FIXED_DT);
+    }
+    boss.dead = true;
+  }
+  assert.ok(summoned.length >= 100);
+  const stuck = summoned.filter(e => !(g.baseDistAt(e.x, e.y) < Infinity));
+  assert.equal(stuck.length, 0, `${stuck.length} of ${summoned.length} summons spawned where they cannot walk`);
 });

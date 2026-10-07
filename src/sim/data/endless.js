@@ -23,9 +23,12 @@ export function endlessWave(index, doorCount = 1) {
   const n = index + 1;
   const pool = poolAt(n);
   // Pick up to three types, rotating through the pool so waves feel different.
-  const picks = [];
-  for (let k = 0; k < Math.min(3, pool.length); k++) picks.push(pool[(n * 3 + k * 5 + Math.floor(n / 3)) % pool.length]);
-  const types = [...new Set(picks)];
+  const types = [];
+  for (let k = 0; k < Math.min(3, pool.length); k++) {
+    let j = n * 3 + k * 5 + Math.floor(n / 3);
+    while (types.includes(pool[j % pool.length])) j++; // k*5 is 0 mod 5: waves 6-8 used to be a single type
+    types.push(pool[j % pool.length]);
+  }
   const budget = 9 + n * 2.6;
   const hp = 1 + 0.11 * n + 0.004 * n * n;
   const groups = [];
