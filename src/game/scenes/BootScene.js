@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_W, GAME_H, FONT, COLOR } from '../config.js';
 import { bakeSvgTextures, makeFxTextures } from '../art/textures.js';
 import { Sfx } from '../audio/Sfx.js';
+import { LEVELS } from '../../sim/data/levels.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -26,16 +27,20 @@ export class BootScene extends Phaser.Scene {
       this.cameras.main.fadeOut(350, 7, 5, 10);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         const q = new URLSearchParams(location.search);
-        if (q.has('level')) this.scene.start('Game', { level: Number(q.get('level')) - 1, difficulty: q.get('diff') || 'normal', endless: q.has('endless') });
+        if (q.has('level')) this.scene.start('Game', { level: Phaser.Math.Clamp((Number(q.get('level')) || 1) - 1, 0, LEVELS.length - 1), difficulty: q.get('diff') || 'normal', endless: q.has('endless') });
         else this.scene.start('Menu');
       });
-    })();
+    })().catch(e => {
+      console.error(e);
+      status.setText('The fire would not catch. Reload to try again.');
+    });
   }
 }
 
 export function loadProgress() {
   try {
-    return JSON.parse(localStorage.getItem('beamfall.progress') || '{}');
+    const p = JSON.parse(localStorage.getItem('beamfall.progress') || '{}');
+    return p && typeof p === 'object' && !Array.isArray(p) ? p : {}; // a stored null would crash the menu
   } catch {
     return {};
   }

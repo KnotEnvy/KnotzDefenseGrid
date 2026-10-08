@@ -14,6 +14,9 @@ export class StoryScene extends Phaser.Scene {
 
   init(data) {
     this.data0 = data;
+    // Phaser reuses this instance for every scene.start('Story'): without the reset, the briefing that follows the
+    // prologue starts with leaving=true and ignores every click, key and the Skip button.
+    this.leaving = false;
   }
 
   create() {

@@ -2,25 +2,32 @@
 import { LEVELS } from '../../sim/data/levels.js';
 import { LEVEL_LORE } from '../../sim/data/lore.js';
 
+/**
+ * Fade out, then start `key`. Only the first call per scene run counts: a second click during the fade (say "Ride out"
+ * then "Menu") would otherwise start BOTH scenes, leaving one running invisibly and still taking clicks. The flag
+ * lives on the camera because Phaser recreates cameras on every scene start, so it can't go stale like a scene field.
+ */
+export function leaveTo(scene, key, data, ms = 500) {
+  const cam = scene.cameras.main;
+  if (cam.leaving) return false;
+  cam.leaving = true;
+  cam.fadeOut(ms, 7, 5, 10);
+  cam.once('camerafadeoutcomplete', () => scene.scene.start(key, data));
+  return true;
+}
+
 export function startLevelFlow(scene, levelIndex, difficulty = 'normal', { skipBriefing = false, endless = false } = {}) {
   const level = LEVELS[levelIndex];
   const lore = LEVEL_LORE[level.id];
-  const go = () => {
-    scene.cameras.main.fadeOut(500, 7, 5, 10);
-    scene.cameras.main.once('camerafadeoutcomplete', () => {
-      if (skipBriefing || endless || !lore) scene.scene.start('Game', { level: levelIndex, difficulty, endless });
-      else
-        scene.scene.start('Story', {
-          title: `${level.number}. ${level.name}`,
-          subtitle: level.subtitle,
-          speaker: lore.speaker,
-          slides: lore.briefing,
-          palette: level.palette,
-          next: { scene: 'Game', data: { level: levelIndex, difficulty } }
-        });
-    });
-  };
-  go();
+  if (skipBriefing || endless || !lore) return leaveTo(scene, 'Game', { level: levelIndex, difficulty, endless });
+  return leaveTo(scene, 'Story', {
+    title: `${level.number}. ${level.name}`,
+    subtitle: level.subtitle,
+    speaker: lore.speaker,
+    slides: lore.briefing,
+    palette: level.palette,
+    next: { scene: 'Game', data: { level: levelIndex, difficulty } }
+  });
 }
 
 /** Reveal `str` into a Text object a few characters at a time. Returns { skip(), done }. */

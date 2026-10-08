@@ -15,7 +15,9 @@ class LightPool {
     this.i = 0;
     this.lights = [];
     for (let k = 0; k < n; k++) {
-      const l = scene.lights.addLight(-999, -999, 100, 0xffffff, 0, 40);
+      // Idle lights are hidden: Phaser counts every visible light against maxLights (20) whatever its intensity,
+      // and when over budget it drops the lights farthest from the camera centre first, i.e. the sun.
+      const l = scene.lights.addLight(-999, -999, 100, 0xffffff, 0, 40).setVisible(false);
       l.tw = null;
       this.lights.push(l);
     }
@@ -24,9 +26,9 @@ class LightPool {
   flash(x, y, color, radius, intensity, ms, z) {
     const l = this.lights[this.i++ % this.lights.length];
     l.tw?.stop();
-    l.setPosition(x, y).setColor(color).setRadius(radius).setZ(z ?? radius * 0.45);
+    l.setVisible(true).setPosition(x, y).setColor(color).setRadius(radius).setZ(z ?? radius * 0.45);
     l.intensity = intensity;
-    l.tw = this.scene.tweens.add({ targets: l, intensity: 0, duration: ms, ease: 'Quad.easeOut' });
+    l.tw = this.scene.tweens.add({ targets: l, intensity: 0, duration: ms, ease: 'Quad.easeOut', onComplete: () => l.setVisible(false) });
   }
 
   destroy() {
@@ -51,10 +53,12 @@ export class Fx {
     this.floaters = [];
     this.shellViews = new Map();
     this.beamLightT = new Map();
+    this.emitters = [];
 
     const em = (key, cfg, depth = DEPTH.fx, lit = false) => {
       const e = scene.add.particles(0, 0, key, { emitting: false, frequency: -1, ...cfg }).setDepth(depth);
       if (lit) e.setLighting(true);
+      this.emitters.push(e);
       return e;
     };
     this.sparks = em('spark', {
@@ -346,6 +350,12 @@ export class Fx {
     });
   }
 
+  /** Freeze particles and the beam hum with the game. Emitters run on their own clock, not the tween timeScale. */
+  setPaused(paused) {
+    for (const e of this.emitters) e.timeScale = paused ? 0 : 1;
+    if (paused) this.sfx.loop('beam_loop', 0);
+  }
+
   // -------------------------------------------------------------------------------- per frame
   update(dt, time) {
     const g = this.gfx;
@@ -357,7 +367,6 @@ export class Fx {
       const m = this.muzzle(p, 0, false, 28);
       for (const b of p.beam) {
         const k = 0.35 + 0.65 * b.power;
-        const mid = 5 + k * 7;
         this.drawBeam(g, m.x, m.y, b.x, b.y, k, time);
         if (Math.random() < 0.5) this.sparks.emitParticleAt(b.x, b.y, 1);
         const last = this.beamLightT.get(p.id) ?? 0;
@@ -365,7 +374,6 @@ export class Fx {
           this.beamLightT.set(p.id, time);
           this.lightPool.flash(b.x, b.y, 0x8ff3ff, 90 + 100 * k, 1.4 * k + 0.4, 130);
         }
-        void mid;
       }
     }
     const beaming = this.sim.posts.reduce((n, p) => n + (p.beam?.length ? 1 : 0), 0);

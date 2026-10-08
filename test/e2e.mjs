@@ -50,6 +50,45 @@ async function main() {
   await shot('02-map');
   check(await page.evaluate("window.__beam.game.scene.getScene('Select').nodes.length") === 5, 'map shows 5 Waystations');
 
+  // ------------------------------------------------------------------ first journey: prologue -> map -> briefing -> level
+  // The Story scene runs twice in a row here (prologue, then the level briefing); Phaser reuses the scene instance,
+  // so state left over from the first run must not block the second. Driven with real clicks.
+  log('first journey (prologue -> map -> briefing -> level)');
+  await page.goto(`${base}/?fx=low`);
+  await settle('Menu');
+  await page.evaluate("window.__beam.game.scene.getScene('Menu').go('Story', { title: 'The Keeping', prologue: true })");
+  await settle('Story');
+  const storyDone = "(s => s.leaving && s.idx === s.slides.length - 1)(window.__beam.game.scene.getScene('Story'))";
+  const clickThroughStory = async () => {
+    for (let i = 0; i < 60 && !(await page.evaluate(storyDone)); i++) {
+      await page.mouse.click(640, 300);
+      await page.waitForTimeout(150);
+    }
+    return page.evaluate(storyDone);
+  };
+  check(await clickThroughStory(), 'clicking through the prologue finishes it');
+  await settle('Select');
+  const active = () => page.evaluate(() => window.__beam.game.scene.getScenes(true).map(s => s.sys.settings.key).join(','));
+  // "Ride out" then "Menu" inside the same fade: only the first transition may happen
+  await page.evaluate("(s => { s.sel = 0; s.endless = false; s.start(); s.leave('Menu'); })(window.__beam.game.scene.getScene('Select'))");
+  await settle('Story');
+  check((await active()) === 'Story', `a second click during the fade is ignored (active: ${await active()})`);
+  check(await clickThroughStory(), 'clicking through the level briefing after the prologue finishes it');
+  await gameReady();
+  check((await active()) === 'Game,Hud', `the briefing leads into the level (active: ${await active()})`);
+  await page.waitForFunction(() => !window.__beam.scene.cameras.main.fadeEffect.isRunning, null, { timeout: 120000 });
+  // Phaser handles queued key events on the next frame, which can be a second away under software GL
+  const frames = async n => { const f0 = await page.evaluate(() => window.__beam.game.loop.frame); await page.waitForFunction(f => window.__beam.game.loop.frame >= f, f0 + n, { timeout: 60000 }); };
+  await page.keyboard.press('p');
+  await frames(2);
+  const wave0 = await page.evaluate(() => window.__beam.scene.sim.waveIndex);
+  await page.keyboard.press(' ');
+  await frames(2);
+  check(await page.evaluate(w => window.__beam.scene.paused && window.__beam.scene.sim.waveIndex === w, wave0), 'Space does not call a wave while paused');
+  await page.keyboard.press('Escape');
+  await frames(2);
+  check(await page.evaluate(() => !window.__beam.scene.paused), 'Escape resumes from pause');
+
   // ------------------------------------------------------------------ every level loads and fights
   const bot = () => loadBot(page);
   for (let lv = 1; lv <= 5; lv++) {

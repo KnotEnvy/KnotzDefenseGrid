@@ -6,7 +6,7 @@ import { skyBackdrop } from '../ui/backdrop.js';
 import { installBasicFx } from '../fx/PostFx.js';
 import { button, panel, txt } from '../ui/kit.js';
 import { starPoly } from './SelectScene.js';
-import { typewriter, startLevelFlow } from '../ui/flow.js';
+import { typewriter, startLevelFlow, leaveTo } from '../ui/flow.js';
 
 /** Victory / defeat screen with animated stars, stats, the level epilogue, and what to do next. */
 export class ResultScene extends Phaser.Scene {
@@ -115,8 +115,7 @@ export class ResultScene extends Phaser.Scene {
   }
 
   leave(scene) {
-    this.cameras.main.fadeOut(500, 7, 5, 10);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(scene));
+    leaveTo(this, scene);
   }
 
   update(time, delta) {

@@ -46,6 +46,7 @@ export class GameScene extends Phaser.Scene {
     this.buildType = null;
     this.selected = null;
     this.ghost = null;
+    this.ghostKey = null;
     this.hoverCell = { cx: -9, cy: -9 };
     this.lastReason = null;
     this.postViews = new Map();
@@ -196,11 +197,13 @@ export class GameScene extends Phaser.Scene {
   onKey(ev) {
     const k = ev.key;
     if (k === 'Escape') {
-      if (this.buildType || this.selected) this.cancel();
-      else this.togglePause();
+      if (this.paused || !(this.buildType || this.selected)) this.togglePause();
+      else this.cancel();
       return;
     }
     if (this.ended) return;
+    // under the pause menu only unpause and mute work (Space would call a wave, S/U would sell/upgrade)
+    if (this.paused && !'pPmM'.includes(k)) return;
     if (k === ' ') {
       ev.preventDefault?.();
       this.callWave();
@@ -276,6 +279,7 @@ export class GameScene extends Phaser.Scene {
     this.paused = !this.paused;
     this.events.emit('paused', this.paused);
     this.tweens.timeScale = this.paused ? 0 : 1;
+    this.fx.setPaused(this.paused);
   }
 
   togglePaths() {
@@ -290,14 +294,14 @@ export class GameScene extends Phaser.Scene {
     this.sfx?.play(won ? 'win' : 'lose', { volume: 0.9 });
     const result = { endless: this.endless, wavesHeld: sim.wavesHeld, won, stars, level: this.levelIndex, difficulty: this.difficulty, shards: sim.shardsRemaining, total: sim.level.shards, kills: sim.stats.kills, time: Math.round(sim.time), recovered: sim.stats.shardsRecovered, lost: sim.stats.shardsLost };
     if (this.endless) {
-      const prog = loadProgress();
+      const prog = sessionProgress(this);
       const key = this.level.id;
       prog[key] = { best: Math.max(prog[key]?.best ?? 0, sim.wavesHeld) };
       saveProgress(prog);
       this.registry.set('progress', prog);
       result.best = prog[key].best;
     } else if (won) {
-      const prog = loadProgress();
+      const prog = sessionProgress(this);
       const key = this.level.id;
       const best = prog[key]?.stars ?? 0;
       prog[key] = { stars: Math.max(best, stars), done: true };
@@ -332,7 +336,7 @@ export class GameScene extends Phaser.Scene {
     for (const v of this.enemyViews.values()) v.update(dt, time);
     for (const v of this.postViews.values()) v.update(dt, time);
     for (const v of this.shardViews) v.update(dt, time);
-    this.fx.update(dt, time);
+    if (!this.paused) this.fx.update(dt, time); // paused: beams/bolts stay drawn as they were, nothing new spawns
     this.world.update(time, delta);
     if (this.world.pathVisible) this.world.drawPaths(time / 1000);
     this.drawHealthBars();
@@ -380,7 +384,14 @@ export class GameScene extends Phaser.Scene {
     if (this.buildType && this.hoverCell.cx > -5) {
       const { cx, cy } = this.hoverCell;
       const type = this.buildType;
-      const chk = sim.canBuild(type, cx, cy);
+      // canBuild floods the whole grid to test the path; redo it when the cell changes, else ~10x/s for walkers
+      const ck = `${type}:${cx}:${cy}`;
+      if (ck !== this.ghostKey || time - this.ghostT > 100) {
+        this.ghostKey = ck;
+        this.ghostT = time;
+        this.ghostChk = sim.canBuild(type, cx, cy);
+      }
+      const chk = this.ghostChk;
       const x = (cx + 1) * CELL;
       const y = (cy + 1) * CELL;
       const col = chk.ok ? 0x7ddc8a : 0xe05050;
@@ -421,4 +432,10 @@ export class GameScene extends Phaser.Scene {
     this.tweens.timeScale = 1;
     this.input.keyboard?.removeAllListeners();
   }
+}
+
+// Progress lives in the registry for the session and is mirrored to localStorage. Reading storage back would lose
+// earlier wins this session whenever storage is blocked (some private modes), relocking levels already beaten.
+function sessionProgress(scene) {
+  return { ...(scene.registry.get('progress') ?? loadProgress()) };
 }
